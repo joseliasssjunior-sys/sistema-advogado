@@ -10,7 +10,7 @@ import os
 NOME_ESCRITORIO = "Thiago Castro Advogados"
 TITULO_ABA = "Portal | Thiago Castro Advogados"
 
-# Cores Dark Luxury
+# Paleta de Cores (Dark Luxury)
 COR_DOURADO = "#Cea065"
 COR_FUNDO = "#00202f"
 COR_SIDEBAR = "#00202f"
@@ -19,7 +19,7 @@ st.set_page_config(
     page_title=TITULO_ABA, 
     page_icon="⚖️", 
     layout="wide", 
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="auto"  # <--- CORREÇÃO PARA CELULAR (Auto ajusta sozinho)
 )
 
 # --- 2. FUNÇÕES DE ARQUIVOS ---
@@ -46,36 +46,45 @@ def listar_arquivos_download(id_protocolo, quem_enviou):
         else:
             st.caption(f"Sem anexos de {quem_enviou}.")
 
-# --- 3. CSS ESTILIZADO ---
+# --- 3. CSS ESTILIZADO (VISUAL BLINDADO) ---
 def configurar_estilo_visual():
     st.markdown(f"""
         <style>
         :root {{ --primary-color: {COR_DOURADO}; }}
         header {{ visibility: hidden; }}
+        
+        /* Fundo e Sidebar */
         [data-testid="stAppViewContainer"] {{ background-color: {COR_FUNDO}; color: white; }}
         [data-testid="stSidebar"] {{ background-color: {COR_SIDEBAR}; border-right: 1px solid {COR_DOURADO}; }}
         h1, h2, h3 {{ color: {COR_DOURADO} !important; font-family: 'Helvetica', sans-serif; }}
         
-        /* Botões */
+        /* Botões Dourados (Sniper CSS) */
         [data-testid="stFormSubmitButton"] > button,
         [data-testid="baseButton-primary"] {{
             background-color: {COR_DOURADO} !important;
             color: black !important;
             border: none !important;
             font-weight: bold !important;
+            box-shadow: none !important;
         }}
         [data-testid="stFormSubmitButton"] > button:hover,
-        [data-testid="baseButton-primary"]:hover {{ background-color: #b38b52 !important; }}
+        [data-testid="baseButton-primary"]:hover {{
+            background-color: #b38b52 !important;
+        }}
         
-        /* Inputs e Selects */
+        /* CORREÇÃO TOTAL DE INPUTS E SENHA */
         div[data-baseweb="input"], div[data-baseweb="base-input"], div[data-baseweb="select"] > div {{
             background-color: #00161F !important;
-            border-color: {COR_DOURADO} !important;
+            border: 1px solid {COR_DOURADO} !important;
             color: white !important;
             border-radius: 5px !important;
         }}
-        input {{ color: white !important; }}
-        button[aria-label="Password visibility"] {{ color: {COR_DOURADO} !important; }}
+        input {{ color: white !important; background-color: transparent !important; }}
+        button[aria-label="Password visibility"] {{ 
+            color: {COR_DOURADO} !important;
+            background-color: transparent !important;
+            border: none !important;
+        }}
         
         /* Tabs e Radios */
         .stTabs [data-baseweb="tab-highlight"] {{ background-color: {COR_DOURADO} !important; }}
@@ -112,6 +121,7 @@ def init_db():
             funcao TEXT
         )
     ''')
+    # Cria Sócio Padrão
     c.execute("SELECT * FROM usuarios WHERE username = 'Thiago Castro'")
     if not c.fetchone():
         c.execute("INSERT INTO usuarios VALUES ('Thiago Castro', '1234', 'Dr. Thiago Castro', 'Sócio-Proprietário')")
@@ -321,10 +331,8 @@ else:
             else:
                 st.info("Nada para validar.")
 
-        # 4. GESTÃO DE PESSOAS (COM EXCLUSÃO)
         with abas_admin[3]:
             col_cad, col_manut = st.columns(2)
-            
             with col_cad:
                 st.subheader("Novo Membro")
                 with st.form("novo_user"):
@@ -349,7 +357,6 @@ else:
                 df_users = pd.read_sql_query("SELECT username, nome, funcao FROM usuarios", conn)
                 conn.close()
                 
-                # RESET DE SENHA
                 with st.expander("🔑 Alterar Senha"):
                     user_reset = st.selectbox("Usuário", df_users['username'], key="sel_reset")
                     pass_reset = st.text_input("Nova Senha", type="password", key="pass_reset")
@@ -361,12 +368,9 @@ else:
                         conn.close()
                         st.success("Senha alterada!")
 
-                # EXCLUIR MEMBRO
                 st.write("")
                 with st.expander("🗑️ Excluir Membro"):
-                    # Filtra para não mostrar o próprio Sócio (Segurança)
                     df_delete = df_users[df_users['funcao'] != 'Sócio-Proprietário']
-                    
                     if not df_delete.empty:
                         user_delete = st.selectbox("Quem excluir?", df_delete['username'], key="sel_del")
                         if st.button("CONFIRMAR EXCLUSÃO", type="primary"):
