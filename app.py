@@ -19,7 +19,7 @@ st.set_page_config(
     page_title=TITULO_ABA, 
     page_icon="⚖️", 
     layout="wide", 
-    initial_sidebar_state="auto"
+    initial_sidebar_state="collapsed" # Começa fechado para focar na escolha
 )
 
 # --- 2. FUNÇÕES DE ARQUIVOS ---
@@ -46,7 +46,7 @@ def listar_arquivos_download(id_protocolo, quem_enviou):
         else:
             st.caption(f"Sem anexos de {quem_enviou}.")
 
-# --- 3. CSS "CIRÚRGICO" (CORREÇÃO MOBILE) ---
+# --- 3. CSS "CIRÚRGICO" (VISUAL BLINDADO) ---
 def configurar_estilo_visual():
     st.markdown(f"""
         <style>
@@ -57,57 +57,44 @@ def configurar_estilo_visual():
         [data-testid="stAppViewContainer"] {{ background-color: {COR_FUNDO}; color: white; }}
         [data-testid="stSidebar"] {{ background-color: {COR_SIDEBAR}; border-right: 1px solid {COR_DOURADO}; }}
         
-        /* --- 1. CORREÇÃO DOS TEXTOS (LEGIBILIDADE) --- */
+        /* Textos */
         h1, h2, h3 {{ color: {COR_DOURADO} !important; }}
-        p, label, .stMarkdown {{ color: white !important; }} /* Texto geral branco */
+        p, label, .stMarkdown {{ color: white !important; }}
         
-        /* --- 2. CORREÇÃO DOS BOTÕES (TEXTO PRETO NO DOURADO) --- */
-        /* Força o container do botão e o texto dentro dele */
+        /* --- BOTÕES --- */
         [data-testid="stFormSubmitButton"] > button,
         [data-testid="baseButton-primary"] {{
             background-color: {COR_DOURADO} !important;
             border: none !important;
-            width: 100%; /* Ocupa largura total no mobile */
-        }}
-        /* Isso aqui garante que o TEXTO dentro do botão seja preto */
-        [data-testid="stFormSubmitButton"] > button *,
-        [data-testid="baseButton-primary"] * {{
+            width: 100%;
             color: black !important; 
             font-weight: bold !important;
         }}
         
-        /* --- 3. CORREÇÃO DA CAIXA DE SENHA (SEM VAZADO) --- */
-        
-        /* A caixa branca principal */
-        div[data-baseweb="input"] {{
+        /* Botão Secundário (Voltar) */
+        [data-testid="baseButton-secondary"] {{
+            background-color: transparent !important;
+            border: 1px solid {COR_DOURADO} !important;
+            color: {COR_DOURADO} !important;
+            width: 100%;
+        }}
+
+        /* --- INPUTS E SENHA --- */
+        div[data-baseweb="input"], div[data-baseweb="base-input"], div[data-baseweb="select"] > div {{
             background-color: white !important;
-            border: 2px solid {COR_DOURADO} !important; /* Borda mais grossa */
+            border: 2px solid {COR_DOURADO} !important;
             border-radius: 8px !important;
             padding: 0px !important;
         }}
-        
-        /* Removemos fundos internos que causavam o "recorte" */
-        div[data-baseweb="base-input"], 
-        div[data-testid="stTextInputRootElement"] > div {{
+        div[data-baseweb="base-input"], div[data-testid="stTextInputRootElement"] > div {{
             background-color: transparent !important;
             border: none !important;
         }}
+        input {{ color: black !important; background-color: transparent !important; }}
+        button[aria-label="Password visibility"] {{ background: transparent !important; color: {COR_FUNDO} !important; }}
         
-        /* Texto digitado (Preto) */
-        input {{
-            color: black !important;
-            background-color: transparent !important;
-        }}
-        
-        /* O Ícone do Olho */
-        button[aria-label="Password visibility"] {{
-            background: transparent !important;
-            color: {COR_FUNDO} !important; /* Olho Azul Escuro para destacar no branco */
-        }}
-        
-        /* --- RESTO --- */
+        /* Resto */
         .stTabs [data-baseweb="tab-highlight"] {{ background-color: {COR_DOURADO} !important; }}
-        div[role="radiogroup"] > label > div:first-child {{ background-color: {COR_DOURADO} !important; border-color: {COR_DOURADO} !important; }}
         [data-testid="stImage"] {{ display: flex; justify-content: center; }}
         .block-container {{ padding-top: 2rem; }}
         </style>
@@ -148,11 +135,13 @@ def init_db():
 
 init_db()
 
-# --- 5. SIDEBAR ---
+# --- 5. VARIÁVEIS DE ESTADO (MEMÓRIA DO APP) ---
 if 'usuario_logado' not in st.session_state:
     st.session_state['usuario_logado'] = None
 if 'funcao_usuario' not in st.session_state:
     st.session_state['funcao_usuario'] = None
+if 'tipo_acesso' not in st.session_state:
+    st.session_state['tipo_acesso'] = None # None = Tela Inicial, 'cliente', 'interno'
 
 def sidebar_logada():
     with st.sidebar:
@@ -175,31 +164,52 @@ def sidebar_logada():
             if st.button("SAIR / LOGOUT"):
                 st.session_state['usuario_logado'] = None
                 st.session_state['funcao_usuario'] = None
+                st.session_state['tipo_acesso'] = None # Volta pra tela inicial
                 st.rerun()
 
 # --- 6. LÓGICA DO SISTEMA ---
+
+# HEADER COM LOGO SEMPRE VISÍVEL
+try:
+    logo = Image.open("logo.png")
+    st.image(logo, width=220)
+except:
+    st.title(NOME_ESCRITORIO)
+st.write("")
+
+# === SE NÃO ESTIVER LOGADO ===
 if st.session_state['usuario_logado'] is None:
-    # === ÁREA PÚBLICA ===
-    # Sidebar invisivel no mobile
-    with st.sidebar:
-        st.write("") 
-
-    try:
-        logo = Image.open("logo.png")
-        st.image(logo, width=200)
-    except:
-        st.title(NOME_ESCRITORIO)
-
-    menu_publico = st.radio("", ["Sou Cliente", "Acesso Interno"], horizontal=True)
     
-    if menu_publico == "Sou Cliente":
+    # TELA 0: PÁGINA INICIAL (LANDING PAGE)
+    if st.session_state['tipo_acesso'] is None:
+        st.markdown("<h3 style='text-align: center; color: white;'>Selecione seu perfil de acesso</h3>", unsafe_allow_html=True)
+        st.write("")
+        st.write("")
+        
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("SOU CLIENTE", type="primary"):
+                st.session_state['tipo_acesso'] = 'cliente'
+                st.rerun()
+            
+            st.write("") # Espaço
+            
+            if st.button("SOU DA EQUIPE (ADVOGADO)", type="primary"):
+                st.session_state['tipo_acesso'] = 'interno'
+                st.rerun()
+
+    # TELA 1: ÁREA DO CLIENTE
+    elif st.session_state['tipo_acesso'] == 'cliente':
+        if st.button("⬅ Voltar ao Início", type="secondary"):
+            st.session_state['tipo_acesso'] = None
+            st.rerun()
+            
         st.info("Bem-vindo ao canal oficial de atendimento.")
         
         aba1, aba2 = st.tabs(["📝 NOVO PEDIDO", "🔍 CONSULTAR"])
         
         with aba1:
             with st.form("form_cliente", clear_on_submit=True):
-                # Labels agora são brancas pelo CSS
                 nome = st.text_input("Nome Completo")
                 tel = st.text_input("WhatsApp")
                 desc = st.text_area("Descrição do Caso")
@@ -241,14 +251,19 @@ if st.session_state['usuario_logado'] is None:
                 else:
                     st.error("Não encontrado.")
 
-    elif menu_publico == "Acesso Interno":
-        st.markdown("<h4 style='text-align: center; color: white;'>Login da Equipe</h4>", unsafe_allow_html=True)
+    # TELA 2: LOGIN DA EQUIPE
+    elif st.session_state['tipo_acesso'] == 'interno':
+        if st.button("⬅ Voltar ao Início", type="secondary"):
+            st.session_state['tipo_acesso'] = None
+            st.rerun()
+
+        st.markdown("<h4 style='text-align: center; color: white;'>Login Corporativo</h4>", unsafe_allow_html=True)
         
         col_login, _ = st.columns([1, 0.1])
         with col_login:
             user = st.text_input("Login")
             senha = st.text_input("Senha", type="password")
-            if st.button("ENTRAR"):
+            if st.button("ENTRAR", type="primary"):
                 conn = sqlite3.connect('dados_escritorio.db')
                 c = conn.cursor()
                 c.execute("SELECT nome, funcao FROM usuarios WHERE username = ? AND senha = ?", (user, senha))
@@ -261,8 +276,8 @@ if st.session_state['usuario_logado'] is None:
                 else:
                     st.error("Acesso negado.")
 
+# === MODO LOGADO (SISTEMA INTERNO) ===
 else:
-    # === ÁREA LOGADA ===
     sidebar_logada()
     cargo_atual = st.session_state['funcao_usuario']
     
@@ -418,22 +433,4 @@ else:
                     st.markdown(f"**Caso #{row['id']} - {row['cliente_nome']}**")
                     st.info(row['descricao'])
                     listar_arquivos_download(row['id'], "cliente")
-                    
-                    if row['status'] == 'Pendente Aprovação':
-                        st.warning("⏳ Aguardando validação do Sócio.")
-                    else:
-                        resposta = st.text_area("Elaborar Resposta:", key=f"staff_{row['id']}")
-                        arq_staff = st.file_uploader("Anexar", key=f"up_staff_{row['id']}", accept_multiple_files=True)
-                        
-                        if st.button(f"ENVIAR PARA VALIDAÇÃO #{row['id']}"):
-                            conn = sqlite3.connect('dados_escritorio.db')
-                            c = conn.cursor()
-                            c.execute("UPDATE chamados SET resposta_interna = ?, status = 'Pendente Aprovação' WHERE id = ?", (resposta, row['id']))
-                            conn.commit()
-                            conn.close()
-                            if arq_staff: salvar_arquivos(arq_staff, row['id'], "advogado")
-                            st.success("Enviado!")
-                            time.sleep(1)
-                            st.rerun()
-        else:
-            st.success("Sua fila de tarefas está vazia.")
+             
