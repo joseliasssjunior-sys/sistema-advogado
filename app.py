@@ -19,7 +19,7 @@ st.set_page_config(
     page_title=TITULO_ABA, 
     page_icon="⚖️", 
     layout="wide", 
-    initial_sidebar_state="collapsed" # Começa fechado para focar na escolha
+    initial_sidebar_state="collapsed"
 )
 
 # --- 2. FUNÇÕES DE ARQUIVOS ---
@@ -46,7 +46,7 @@ def listar_arquivos_download(id_protocolo, quem_enviou):
         else:
             st.caption(f"Sem anexos de {quem_enviou}.")
 
-# --- 3. CSS "CIRÚRGICO" (VISUAL BLINDADO) ---
+# --- 3. CSS ESTILIZADO (CORREÇÕES VISUAIS FINAIS) ---
 def configurar_estilo_visual():
     st.markdown(f"""
         <style>
@@ -58,25 +58,44 @@ def configurar_estilo_visual():
         [data-testid="stSidebar"] {{ background-color: {COR_SIDEBAR}; border-right: 1px solid {COR_DOURADO}; }}
         
         /* Textos */
-        h1, h2, h3 {{ color: {COR_DOURADO} !important; }}
+        h1, h2, h3 {{ color: {COR_DOURADO} !important; text-align: center; }} /* Títulos centralizados */
         p, label, .stMarkdown {{ color: white !important; }}
         
-        /* --- BOTÕES --- */
+        /* --- CORREÇÃO DOS BOTÕES --- */
+        
+        /* 1. Botão Primário (Dourado) - Tela Inicial e Forms */
         [data-testid="stFormSubmitButton"] > button,
         [data-testid="baseButton-primary"] {{
             background-color: {COR_DOURADO} !important;
             border: none !important;
             width: 100%;
-            color: black !important; 
-            font-weight: bold !important;
+            padding: 15px !important; /* Mais alto para ficar bonito */
         }}
         
-        /* Botão Secundário (Voltar) */
+        /* Garante que o texto dentro do botão primário seja PRETO e CENTRALIZADO */
+        [data-testid="stFormSubmitButton"] > button p,
+        [data-testid="baseButton-primary"] p {{
+            color: black !important; 
+            font-weight: bold !important;
+            font-size: 18px !important;
+            text-align: center !important;
+            margin: auto !important; /* Força centralização vertical/horizontal */
+        }}
+        
+        /* 2. Botão Secundário (Voltar) - Agora visível! */
         [data-testid="baseButton-secondary"] {{
-            background-color: transparent !important;
-            border: 1px solid {COR_DOURADO} !important;
-            color: {COR_DOURADO} !important;
+            background-color: {COR_FUNDO} !important; /* Fundo Escuro */
+            border: 2px solid {COR_DOURADO} !important; /* Borda Dourada grossa */
             width: 100%;
+            padding: 10px !important;
+        }}
+        
+        /* Texto do botão voltar (Dourado) */
+        [data-testid="baseButton-secondary"] p {{
+            color: {COR_DOURADO} !important;
+            font-weight: bold !important;
+            text-align: center !important;
+            margin: auto !important;
         }}
 
         /* --- INPUTS E SENHA --- */
@@ -84,7 +103,6 @@ def configurar_estilo_visual():
             background-color: white !important;
             border: 2px solid {COR_DOURADO} !important;
             border-radius: 8px !important;
-            padding: 0px !important;
         }}
         div[data-baseweb="base-input"], div[data-testid="stTextInputRootElement"] > div {{
             background-color: transparent !important;
@@ -96,7 +114,7 @@ def configurar_estilo_visual():
         /* Resto */
         .stTabs [data-baseweb="tab-highlight"] {{ background-color: {COR_DOURADO} !important; }}
         [data-testid="stImage"] {{ display: flex; justify-content: center; }}
-        .block-container {{ padding-top: 2rem; }}
+        .block-container {{ padding-top: 3rem; }} /* Mais espaço no topo */
         </style>
     """, unsafe_allow_html=True)
 
@@ -135,13 +153,13 @@ def init_db():
 
 init_db()
 
-# --- 5. VARIÁVEIS DE ESTADO (MEMÓRIA DO APP) ---
+# --- 5. VARIÁVEIS DE ESTADO ---
 if 'usuario_logado' not in st.session_state:
     st.session_state['usuario_logado'] = None
 if 'funcao_usuario' not in st.session_state:
     st.session_state['funcao_usuario'] = None
 if 'tipo_acesso' not in st.session_state:
-    st.session_state['tipo_acesso'] = None # None = Tela Inicial, 'cliente', 'interno'
+    st.session_state['tipo_acesso'] = None
 
 def sidebar_logada():
     with st.sidebar:
@@ -164,15 +182,15 @@ def sidebar_logada():
             if st.button("SAIR / LOGOUT"):
                 st.session_state['usuario_logado'] = None
                 st.session_state['funcao_usuario'] = None
-                st.session_state['tipo_acesso'] = None # Volta pra tela inicial
+                st.session_state['tipo_acesso'] = None
                 st.rerun()
 
 # --- 6. LÓGICA DO SISTEMA ---
 
-# HEADER COM LOGO SEMPRE VISÍVEL
+# HEADER
 try:
     logo = Image.open("logo.png")
-    st.image(logo, width=220)
+    st.image(logo, width=240) # Um pouco maior
 except:
     st.title(NOME_ESCRITORIO)
 st.write("")
@@ -180,19 +198,20 @@ st.write("")
 # === SE NÃO ESTIVER LOGADO ===
 if st.session_state['usuario_logado'] is None:
     
-    # TELA 0: PÁGINA INICIAL (LANDING PAGE)
+    # TELA 0: PÁGINA INICIAL (LANDING PAGE) - LAYOUT CORRIGIDO
     if st.session_state['tipo_acesso'] is None:
-        st.markdown("<h3 style='text-align: center; color: white;'>Selecione seu perfil de acesso</h3>", unsafe_allow_html=True)
-        st.write("")
-        st.write("")
+        st.markdown("<h3 style='text-align: center; color: white; margin-bottom: 30px;'>Selecione seu perfil de acesso</h3>", unsafe_allow_html=True)
         
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
+        # Usando colunas para centralizar e dar largura igual
+        c_espaco_esq, c_botoes, c_espaco_dir = st.columns([1, 4, 1]) # 4/6 da tela para os botões
+        
+        with c_botoes:
             if st.button("SOU CLIENTE", type="primary"):
                 st.session_state['tipo_acesso'] = 'cliente'
                 st.rerun()
             
-            st.write("") # Espaço
+            st.write("") # Espaço entre botões
+            st.write("")
             
             if st.button("SOU DA EQUIPE (ADVOGADO)", type="primary"):
                 st.session_state['tipo_acesso'] = 'interno'
@@ -200,6 +219,7 @@ if st.session_state['usuario_logado'] is None:
 
     # TELA 1: ÁREA DO CLIENTE
     elif st.session_state['tipo_acesso'] == 'cliente':
+        # Botão voltar agora é visível (Fundo escuro, texto dourado)
         if st.button("⬅ Voltar ao Início", type="secondary"):
             st.session_state['tipo_acesso'] = None
             st.rerun()
@@ -257,7 +277,7 @@ if st.session_state['usuario_logado'] is None:
             st.session_state['tipo_acesso'] = None
             st.rerun()
 
-        st.markdown("<h4 style='text-align: center; color: white;'>Login Corporativo</h4>", unsafe_allow_html=True)
+        st.markdown("<h4 style='text-align: center; color: white; margin-top: 20px;'>Login Corporativo</h4>", unsafe_allow_html=True)
         
         col_login, _ = st.columns([1, 0.1])
         with col_login:
@@ -276,7 +296,7 @@ if st.session_state['usuario_logado'] is None:
                 else:
                     st.error("Acesso negado.")
 
-# === MODO LOGADO (SISTEMA INTERNO) ===
+# === MODO LOGADO ===
 else:
     sidebar_logada()
     cargo_atual = st.session_state['funcao_usuario']
@@ -433,4 +453,22 @@ else:
                     st.markdown(f"**Caso #{row['id']} - {row['cliente_nome']}**")
                     st.info(row['descricao'])
                     listar_arquivos_download(row['id'], "cliente")
-             
+                    
+                    if row['status'] == 'Pendente Aprovação':
+                        st.warning("⏳ Aguardando validação do Sócio.")
+                    else:
+                        resposta = st.text_area("Elaborar Resposta:", key=f"staff_{row['id']}")
+                        arq_staff = st.file_uploader("Anexar", key=f"up_staff_{row['id']}", accept_multiple_files=True)
+                        
+                        if st.button(f"ENVIAR PARA VALIDAÇÃO #{row['id']}"):
+                            conn = sqlite3.connect('dados_escritorio.db')
+                            c = conn.cursor()
+                            c.execute("UPDATE chamados SET resposta_interna = ?, status = 'Pendente Aprovação' WHERE id = ?", (resposta, row['id']))
+                            conn.commit()
+                            conn.close()
+                            if arq_staff: salvar_arquivos(arq_staff, row['id'], "advogado")
+                            st.success("Enviado!")
+                            time.sleep(1)
+                            st.rerun()
+        else:
+            st.success("Sua fila de tarefas está vazia.")
