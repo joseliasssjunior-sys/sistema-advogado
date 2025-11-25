@@ -46,7 +46,7 @@ def listar_arquivos_download(id_protocolo, quem_enviou):
         else:
             st.caption(f"Sem anexos de {quem_enviou}.")
 
-# --- 3. CSS "DEFINITIVO" (TAMANHO FIXO E MARGEM AUTOMÁTICA) ---
+# --- 3. CSS "DEFINITIVO" (CENTRALIZAÇÃO PERFEITA) ---
 def configurar_estilo_visual():
     st.markdown(f"""
         <style>
@@ -61,7 +61,15 @@ def configurar_estilo_visual():
         h1, h2, h3 {{ color: {COR_DOURADO} !important; }}
         p, label, .stMarkdown {{ color: white !important; }}
         
-        /* --- CORREÇÃO DEFINITIVA DOS BOTÕES --- */
+        /* --- CENTRALIZAÇÃO DOS BOTÕES NA TELA --- */
+        /* Esta regra força a 'caixa invisível' do botão a centralizar seu conteúdo */
+        .stButton {{
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }}
+        
+        /* --- ESTILO DOS BOTÕES (TAMANHO FIXO) --- */
         
         /* Botão Primário (Dourado Cheio) */
         button[kind="primary"] {{
@@ -72,16 +80,15 @@ def configurar_estilo_visual():
             border-radius: 8px !important;
             font-size: 18px !important;
             
-            /* O SEGREDO DA CENTRALIZAÇÃO E TAMANHO IGUAL */
-            display: block !important; /* Comporta-se como um bloco */
-            width: 280px !important;   /* LARGURA FIXA (Igual para ambos) */
-            height: 65px !important;   /* ALTURA FIXA */
-            margin: 20px auto !important; /* "auto" nas laterais centraliza na tela */
+            /* Tamanho Fixo para ficarem iguais */
+            width: 280px !important;   
+            height: 65px !important;
             
             /* Centraliza o texto DENTRO do botão */
             display: flex !important;
             justify-content: center !important;
             align-items: center !important;
+            margin: 0 auto !important; /* Margem automática */
         }}
         
         /* Texto dentro do botão primário */
@@ -97,7 +104,8 @@ def configurar_estilo_visual():
             background-color: transparent !important;
             border: 2px solid {COR_DOURADO} !important;
             color: {COR_DOURADO} !important;
-            width: 100% !important;
+            width: 100% !important; /* Ocupa largura total do container (que pode ser menor) */
+            max-width: 280px !important; /* Mesma largura máxima dos outros */
             padding: 10px !important;
             border-radius: 8px !important;
             margin-top: 10px !important;
@@ -209,11 +217,14 @@ if st.session_state['usuario_logado'] is None:
     if st.session_state['tipo_acesso'] is None:
         st.markdown("<h3 style='text-align: center; color: white; margin-bottom: 40px;'>Selecione seu perfil de acesso</h3>", unsafe_allow_html=True)
         
-        # REMOVIDAS AS COLUNAS. O CSS "margin: auto" centraliza os botões agora.
+        # Sem colunas, layout vertical puro
         
         if st.button("Sou Cliente", type="primary"):
             st.session_state['tipo_acesso'] = 'cliente'
             st.rerun()
+        
+        # Espaço via markdown pra garantir separação
+        st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
         
         if st.button("Sou Advogado", type="primary"):
             st.session_state['tipo_acesso'] = 'interno'
