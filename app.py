@@ -103,7 +103,7 @@ class DatabaseManager:
 
 db = DatabaseManager(CONFIG["DB_NAME"])
 
-# --- 3. CSS "CENTRALIZAÇÃO ABSOLUTA" ---
+# --- 3. CSS "HARDCORE ALIGNMENT" ---
 
 def inject_custom_css():
     st.markdown(f"""
@@ -120,24 +120,29 @@ def inject_custom_css():
 
         /* --- CORREÇÃO DE ALINHAMENTO DO BOTÃO --- */
         
-        /* 1. O Container (A caixa invisível onde o botão mora) */
-        .stButton {{
-            width: 100% !important;        /* Força ocupar a tela toda */
-            display: flex !important;      /* Ativa o modo Flexbox */
-            justify-content: center !important; /* Manda o conteúdo (botão) para o MEIO */
-            margin-top: 10px !important;
+        /* 1. Forçar o container do botão a ocupar 100% */
+        div[data-testid="stButton"] {{
+            width: 100% !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
         }}
 
-        /* 2. O Botão (A parte colorida clicável) */
-        .stButton > button {{
-            width: 280px !important;         /* Largura Fixa */
-            max-width: 90vw !important;      /* Segurança mobile */
+        /* 2. O Botão (A parte colorida) */
+        div[data-testid="stButton"] > button {{
+            /* Comportamento de Bloco para respeitar margens */
+            display: block !important;
+            
+            /* Dimensões */
+            width: 280px !important; 
+            max-width: 85vw !important; /* Segurança extra para telas muito estreitas */
             height: 60px !important;
             
-            /* Backup de centralização (margens automáticas) */
+            /* CENTRALIZAÇÃO MÁGICA (Margin Auto) */
             margin-left: auto !important;    
             margin-right: auto !important;
             
+            /* Estilo Visual */
             background-color: {CONFIG['COLORS']['GOLD']} !important;
             color: #00202f !important;
             border: none !important;
@@ -148,13 +153,13 @@ def inject_custom_css():
         }}
         
         /* Centralizar texto dentro do botão */
-        .stButton > button p {{
+        div[data-testid="stButton"] > button p {{
             width: 100%;
             text-align: center;
         }}
 
         /* Hover */
-        .stButton > button:hover {{
+        div[data-testid="stButton"] > button:hover {{
             background-color: #b38b52 !important;
             transform: scale(1.02);
             transition: 0.2s;
@@ -203,15 +208,14 @@ def view_login_screen():
         st.markdown("<h3>Seja bem-vindo(a)</h3>", unsafe_allow_html=True)
         st.markdown("<p style='text-align: center; opacity: 0.8; margin-bottom: 30px;'>Selecione seu perfil de acesso</p>", unsafe_allow_html=True)
         
-        # REMOVIDO st.columns
-        # O CSS .stButton { justify-content: center } fará o trabalho pesado agora.
+        # REMOVIDO st.columns: Vamos confiar puramente no CSS "Margin Auto"
         
         if st.button("SOU CLIENTE"):
             st.session_state['tipo_acesso'] = 'cliente'
             st.rerun()
         
-        # Espacinho extra visual (opcional)
-        st.write("") 
+        # Espaçamento manual
+        st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
         
         if st.button("SOU ADVOGADO"):
             st.session_state['tipo_acesso'] = 'interno'
@@ -234,7 +238,7 @@ def view_login_screen():
         
         st.markdown("<h3 style='margin-top:20px;'>Login Corporativo</h3>", unsafe_allow_html=True)
         
-        # Formulário
+        # Formulário levemente centralizado
         c1, c2, c3 = st.columns([0.1, 0.8, 0.1])
         with c2:
             with st.form("login_form"):
@@ -242,7 +246,7 @@ def view_login_screen():
                 password = st.text_input("Senha", type="password")
                 st.write("")
                 
-                # O botão de entrar também vai respeitar o CSS centralizado
+                # O botão de entrar também será centralizado pelo CSS global
                 if st.form_submit_button("ENTRAR"):
                     hashed_pw = Utils.hash_password(password)
                     user_data = db.fetch_one("SELECT nome, funcao FROM usuarios WHERE username = ? AND senha = ?", (user, hashed_pw))
