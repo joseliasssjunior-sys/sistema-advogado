@@ -46,7 +46,7 @@ def listar_arquivos_download(id_protocolo, quem_enviou):
         else:
             st.caption(f"Sem anexos de {quem_enviou}.")
 
-# --- 3. CSS ESTILIZADO (CORREÇÃO FUNDO BRANCO) ---
+# --- 3. CSS "CIRÚRGICO" (CORREÇÃO MOBILE) ---
 def configurar_estilo_visual():
     st.markdown(f"""
         <style>
@@ -56,53 +56,58 @@ def configurar_estilo_visual():
         /* Fundo Geral */
         [data-testid="stAppViewContainer"] {{ background-color: {COR_FUNDO}; color: white; }}
         [data-testid="stSidebar"] {{ background-color: {COR_SIDEBAR}; border-right: 1px solid {COR_DOURADO}; }}
-        h1, h2, h3 {{ color: {COR_DOURADO} !important; font-family: 'Helvetica', sans-serif; }}
         
-        /* Botões Dourados */
+        /* --- 1. CORREÇÃO DOS TEXTOS (LEGIBILIDADE) --- */
+        h1, h2, h3 {{ color: {COR_DOURADO} !important; }}
+        p, label, .stMarkdown {{ color: white !important; }} /* Texto geral branco */
+        
+        /* --- 2. CORREÇÃO DOS BOTÕES (TEXTO PRETO NO DOURADO) --- */
+        /* Força o container do botão e o texto dentro dele */
         [data-testid="stFormSubmitButton"] > button,
         [data-testid="baseButton-primary"] {{
             background-color: {COR_DOURADO} !important;
-            color: black !important;
             border: none !important;
+            width: 100%; /* Ocupa largura total no mobile */
+        }}
+        /* Isso aqui garante que o TEXTO dentro do botão seja preto */
+        [data-testid="stFormSubmitButton"] > button *,
+        [data-testid="baseButton-primary"] * {{
+            color: black !important; 
             font-weight: bold !important;
-            box-shadow: none !important;
-        }}
-        [data-testid="stFormSubmitButton"] > button:hover,
-        [data-testid="baseButton-primary"]:hover {{
-            background-color: #b38b52 !important;
         }}
         
-        /* --- MUDANÇA: INPUTS COM FUNDO BRANCO --- */
+        /* --- 3. CORREÇÃO DA CAIXA DE SENHA (SEM VAZADO) --- */
         
-        /* 1. A Caixa Externa (O retângulo branco) */
-        div[data-baseweb="input"], div[data-baseweb="base-input"], div[data-baseweb="select"] > div {{
-            background-color: white !important; /* Fundo Branco */
-            border: 1px solid {COR_DOURADO} !important; /* Borda Dourada */
-            border-radius: 5px !important;
+        /* A caixa branca principal */
+        div[data-baseweb="input"] {{
+            background-color: white !important;
+            border: 2px solid {COR_DOURADO} !important; /* Borda mais grossa */
+            border-radius: 8px !important;
+            padding: 0px !important;
         }}
         
-        /* 2. O Texto Digitado (Preto) */
+        /* Removemos fundos internos que causavam o "recorte" */
+        div[data-baseweb="base-input"], 
+        div[data-testid="stTextInputRootElement"] > div {{
+            background-color: transparent !important;
+            border: none !important;
+        }}
+        
+        /* Texto digitado (Preto) */
         input {{
-            color: black !important; /* Letra Preta */
-            caret-color: black !important; /* Cursor piscando preto */
-        }}
-        
-        /* 3. Texto dentro das caixas de seleção (Dropdowns) */
-        div[data-baseweb="select"] span {{
             color: black !important;
+            background-color: transparent !important;
         }}
         
-        /* 4. O Ícone do Olho (Senha) */
+        /* O Ícone do Olho */
         button[aria-label="Password visibility"] {{
-            color: {COR_DOURADO} !important;
+            background: transparent !important;
+            color: {COR_FUNDO} !important; /* Olho Azul Escuro para destacar no branco */
         }}
         
-        /* Tabs e Radios */
+        /* --- RESTO --- */
         .stTabs [data-baseweb="tab-highlight"] {{ background-color: {COR_DOURADO} !important; }}
         div[role="radiogroup"] > label > div:first-child {{ background-color: {COR_DOURADO} !important; border-color: {COR_DOURADO} !important; }}
-        [data-testid="stSidebar"] label {{ color: white !important; font-size: 16px; }}
-        
-        /* Logo Centralizada no Mobile */
         [data-testid="stImage"] {{ display: flex; justify-content: center; }}
         .block-container {{ padding-top: 2rem; }}
         </style>
@@ -175,11 +180,10 @@ def sidebar_logada():
 # --- 6. LÓGICA DO SISTEMA ---
 if st.session_state['usuario_logado'] is None:
     # === ÁREA PÚBLICA ===
-    # Sidebar vazia no mobile para focar no conteúdo
+    # Sidebar invisivel no mobile
     with st.sidebar:
         st.write("") 
 
-    # Header com Logo
     try:
         logo = Image.open("logo.png")
         st.image(logo, width=200)
@@ -195,6 +199,7 @@ if st.session_state['usuario_logado'] is None:
         
         with aba1:
             with st.form("form_cliente", clear_on_submit=True):
+                # Labels agora são brancas pelo CSS
                 nome = st.text_input("Nome Completo")
                 tel = st.text_input("WhatsApp")
                 desc = st.text_area("Descrição do Caso")
@@ -237,9 +242,9 @@ if st.session_state['usuario_logado'] is None:
                     st.error("Não encontrado.")
 
     elif menu_publico == "Acesso Interno":
-        st.markdown("<h4 style='text-align: center;'>Login da Equipe</h4>", unsafe_allow_html=True)
-        # AGORA OS INPUTS SERÃO BRANCOS
-        col_login, _ = st.columns([1, 0.1]) # Truque para centralizar no mobile
+        st.markdown("<h4 style='text-align: center; color: white;'>Login da Equipe</h4>", unsafe_allow_html=True)
+        
+        col_login, _ = st.columns([1, 0.1])
         with col_login:
             user = st.text_input("Login")
             senha = st.text_input("Senha", type="password")
