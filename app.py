@@ -46,7 +46,7 @@ def listar_arquivos_download(id_protocolo, quem_enviou):
         else:
             st.caption(f"Sem anexos de {quem_enviou}.")
 
-# --- 3. CSS "AGRESSIVO" (CORREÇÃO FINAL DE BOTÕES) ---
+# --- 3. CSS "AGRESSIVO" (CENTRALIZAÇÃO TOTAL) ---
 def configurar_estilo_visual():
     st.markdown(f"""
         <style>
@@ -61,7 +61,7 @@ def configurar_estilo_visual():
         h1, h2, h3 {{ color: {COR_DOURADO} !important; }}
         p, label, .stMarkdown {{ color: white !important; }}
         
-        /* --- CORREÇÃO DOS BOTÕES (TAMANHOS IGUAIS) --- */
+        /* --- CORREÇÃO DOS BOTÕES (GÊMEOS E CENTRALIZADOS) --- */
         
         /* Botão Primário (Dourado Cheio) */
         button[kind="primary"] {{
@@ -69,18 +69,25 @@ def configurar_estilo_visual():
             border: none !important;
             color: black !important;
             font-weight: bold !important;
-            width: 100% !important; /* Largura total */
-            min-height: 60px !important; /* Altura mínima garantida */
+            width: 100% !important; /* Ocupa toda a largura da coluna */
+            height: 70px !important; /* Altura FIXA para ficarem iguais */
             border-radius: 8px !important;
             font-size: 18px !important;
-            margin-bottom: 15px !important; /* Espaço abaixo */
+            margin-bottom: 20px !important; /* Espaço entre eles */
+            
+            /* MÁGICA PARA CENTRALIZAR O TEXTO DENTRO */
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
         }}
         
         /* Texto dentro do botão primário */
         button[kind="primary"] p {{
             color: black !important;
-            font-size: 18px !important;
-            margin: auto !important; /* Centraliza texto verticalmente */
+            font-size: 20px !important; /* Fonte um pouco maior */
+            text-align: center !important;
+            margin: 0 !important; /* Remove margens padrão */
+            padding: 0 !important;
         }}
         
         /* Botão Secundário (Voltar) */
@@ -196,20 +203,22 @@ st.write("")
 # === SE NÃO ESTIVER LOGADO ===
 if st.session_state['usuario_logado'] is None:
     
-    # TELA 0: PÁGINA INICIAL (LANDING PAGE) - BOTÕES IDÊNTICOS
+    # TELA 0: PÁGINA INICIAL (LANDING PAGE) - CENTRALIZADA
     if st.session_state['tipo_acesso'] is None:
-        st.markdown("<h3 style='text-align: center; color: white; margin-bottom: 30px;'>Selecione seu perfil de acesso</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='text-align: center; color: white; margin-bottom: 40px;'>Selecione seu perfil de acesso</h3>", unsafe_allow_html=True)
         
-        # Sem colunas, deixa o CSS controlar a largura total
-        if st.button("1- Sou Cliente", type="primary"):
-            st.session_state['tipo_acesso'] = 'cliente'
-            st.rerun()
+        # Colunas para centralizar na tela [vazio, conteúdo, vazio]
+        col_esq, col_centro, col_dir = st.columns([1, 3, 1]) 
         
-        # O espaçamento agora é feito pela margem do botão no CSS
-        
-        if st.button("2- Sou Advogado", type="primary"):
-            st.session_state['tipo_acesso'] = 'interno'
-            st.rerun()
+        with col_centro:
+            # Botões sem numeração, CSS garante tamanho igual e texto centralizado
+            if st.button("Sou Cliente", type="primary"):
+                st.session_state['tipo_acesso'] = 'cliente'
+                st.rerun()
+            
+            if st.button("Sou Advogado", type="primary"):
+                st.session_state['tipo_acesso'] = 'interno'
+                st.rerun()
 
     # TELA 1: ÁREA DO CLIENTE
     elif st.session_state['tipo_acesso'] == 'cliente':
