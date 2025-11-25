@@ -8,7 +8,7 @@ import hashlib
 from pathlib import Path
 import base64
 
-# --- 1. CONFIGURAÇÕES E CONSTANTES ---
+# --- 1. CONFIGURAÇÕES ---
 CONFIG = {
     "APP_NAME": "Thiago Castro Advogados",
     "PAGE_TITLE": "Portal | Thiago Castro Advogados",
@@ -28,7 +28,7 @@ st.set_page_config(
     initial_sidebar_state="auto"
 )
 
-# --- 2. GERENCIADORES (SERVICES) ---
+# --- 2. GERENCIADORES (BACKEND) ---
 
 class Utils:
     @staticmethod
@@ -103,66 +103,62 @@ class DatabaseManager:
 
 db = DatabaseManager(CONFIG["DB_NAME"])
 
-# --- 3. CSS "HARDCORE ALIGNMENT" ---
+# --- 3. CSS RESPONSIVO (A Correção) ---
 
 def inject_custom_css():
     st.markdown(f"""
         <style>
         :root {{ --primary-color: {CONFIG['COLORS']['GOLD']}; }}
         
-        /* Fundo */
         [data-testid="stAppViewContainer"] {{ background-color: {CONFIG['COLORS']['BG']}; color: white; }}
         [data-testid="stSidebar"] {{ background-color: {CONFIG['COLORS']['SIDEBAR']}; border-right: 1px solid {CONFIG['COLORS']['GOLD']}; }}
         
-        /* Textos */
         h1, h2, h3 {{ color: {CONFIG['COLORS']['GOLD']} !important; text-align: center; }}
         p, label {{ color: white !important; }}
 
-        /* --- CORREÇÃO DE ALINHAMENTO DO BOTÃO --- */
+        /* --- CSS NUCLEAR PARA BOTÕES --- */
         
-        /* 1. Forçar o container do botão a ocupar 100% */
-        div[data-testid="stButton"] {{
+        /* 1. Garante que o container do botão ocupe a largura total da linha */
+        .stButton {{
             width: 100% !important;
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }}
 
-        /* 2. O Botão (A parte colorida) */
-        div[data-testid="stButton"] > button {{
-            /* Comportamento de Bloco para respeitar margens */
+        /* 2. O Botão em si */
+        .stButton > button {{
+            /* NO MOBILE: Ocupa 90% da tela (sobra 5% de cada lado = centralizado) */
+            width: 90% !important; 
+            
+            /* NO PC: Trava em 400px para não ficar gigante */
+            max-width: 400px !important; 
+            
+            height: 65px !important;
+            
+            /* Mágica da Centralização */
             display: block !important;
-            
-            /* Dimensões */
-            width: 280px !important; 
-            max-width: 85vw !important; /* Segurança extra para telas muito estreitas */
-            height: 60px !important;
-            
-            /* CENTRALIZAÇÃO MÁGICA (Margin Auto) */
-            margin-left: auto !important;    
+            margin-left: auto !important;
             margin-right: auto !important;
             
-            /* Estilo Visual */
+            /* Visual */
             background-color: {CONFIG['COLORS']['GOLD']} !important;
             color: #00202f !important;
             border: none !important;
-            border-radius: 8px !important;
-            font-weight: bold !important;
-            font-size: 16px !important;
+            border-radius: 10px !important;
+            font-weight: 800 !important;
+            font-size: 18px !important;
             text-transform: uppercase !important;
+            box-shadow: 0px 4px 6px rgba(0,0,0,0.3) !important;
         }}
         
-        /* Centralizar texto dentro do botão */
-        div[data-testid="stButton"] > button p {{
+        .stButton > button p {{
             width: 100%;
             text-align: center;
         }}
 
-        /* Hover */
-        div[data-testid="stButton"] > button:hover {{
+        .stButton > button:hover {{
             background-color: #b38b52 !important;
             transform: scale(1.02);
-            transition: 0.2s;
         }}
 
         /* Inputs */
@@ -172,7 +168,6 @@ def inject_custom_css():
             border-radius: 8px !important;
         }}
         input, textarea {{ color: black !important; }}
-        
         header {{ visibility: hidden; }}
         </style>
     """, unsafe_allow_html=True)
@@ -181,8 +176,8 @@ def render_logo_html():
     img_b64 = Utils.get_image_base64("logo.png")
     if img_b64:
         st.markdown(f"""
-            <div style="display: flex; justify-content: center; margin-bottom: 20px;">
-                <img src="{img_b64}" style="max-width: 250px; width: 70%; object-fit: contain;">
+            <div style="display: flex; justify-content: center; margin-bottom: 30px;">
+                <img src="{img_b64}" style="max-width: 280px; width: 80%; object-fit: contain;">
             </div>
         """, unsafe_allow_html=True)
     else:
@@ -202,20 +197,18 @@ def render_sidebar():
 def view_login_screen():
     render_logo_html()
     
-    st.write("")
-    
     if 'tipo_acesso' not in st.session_state:
         st.markdown("<h3>Seja bem-vindo(a)</h3>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; opacity: 0.8; margin-bottom: 30px;'>Selecione seu perfil de acesso</p>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; opacity: 0.8; margin-bottom: 40px;'>Selecione seu perfil de acesso</p>", unsafe_allow_html=True)
         
-        # REMOVIDO st.columns: Vamos confiar puramente no CSS "Margin Auto"
+        # SEM COLUNAS - Deixa o CSS cuidar da largura (90%) e margem (auto)
         
         if st.button("SOU CLIENTE"):
             st.session_state['tipo_acesso'] = 'cliente'
             st.rerun()
         
-        # Espaçamento manual
-        st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
+        # Pequeno espaço vertical manual
+        st.markdown("<div style='height: 15px'></div>", unsafe_allow_html=True)
         
         if st.button("SOU ADVOGADO"):
             st.session_state['tipo_acesso'] = 'interno'
@@ -238,7 +231,7 @@ def view_login_screen():
         
         st.markdown("<h3 style='margin-top:20px;'>Login Corporativo</h3>", unsafe_allow_html=True)
         
-        # Formulário levemente centralizado
+        # Para formulários, colunas ainda são úteis para não ficar "esticado" demais
         c1, c2, c3 = st.columns([0.1, 0.8, 0.1])
         with c2:
             with st.form("login_form"):
@@ -246,7 +239,7 @@ def view_login_screen():
                 password = st.text_input("Senha", type="password")
                 st.write("")
                 
-                # O botão de entrar também será centralizado pelo CSS global
+                # Botão de entrar também será centralizado pelo CSS global (90% width)
                 if st.form_submit_button("ENTRAR"):
                     hashed_pw = Utils.hash_password(password)
                     user_data = db.fetch_one("SELECT nome, funcao FROM usuarios WHERE username = ? AND senha = ?", (user, hashed_pw))
