@@ -103,7 +103,7 @@ class DatabaseManager:
 
 db = DatabaseManager(CONFIG["DB_NAME"])
 
-# --- 3. CSS RESPONSIVO (A Correção) ---
+# --- 3. CSS "FULL WIDTH" (A Solução Definitiva) ---
 
 def inject_custom_css():
     st.markdown(f"""
@@ -116,49 +116,38 @@ def inject_custom_css():
         h1, h2, h3 {{ color: {CONFIG['COLORS']['GOLD']} !important; text-align: center; }}
         p, label {{ color: white !important; }}
 
-        /* --- CSS NUCLEAR PARA BOTÕES --- */
-        
-        /* 1. Garante que o container do botão ocupe a largura total da linha */
-        .stButton {{
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }}
-
-        /* 2. O Botão em si */
-        .stButton > button {{
-            /* NO MOBILE: Ocupa 90% da tela (sobra 5% de cada lado = centralizado) */
-            width: 90% !important; 
-            
-            /* NO PC: Trava em 400px para não ficar gigante */
-            max-width: 400px !important; 
-            
-            height: 65px !important;
-            
-            /* Mágica da Centralização */
+        /* --- FORÇA BRUTA NO BOTÃO --- */
+        /* Alvo: TODOS os botões dentro da área principal (exclui sidebar se necessário) */
+        .stMain button {{
+            width: 100% !important;  /* Ocupa todo o espaço disponível */
+            margin: 0px !important;
             display: block !important;
-            margin-left: auto !important;
-            margin-right: auto !important;
             
             /* Visual */
             background-color: {CONFIG['COLORS']['GOLD']} !important;
             color: #00202f !important;
             border: none !important;
-            border-radius: 10px !important;
+            border-radius: 8px !important;
             font-weight: 800 !important;
             font-size: 18px !important;
             text-transform: uppercase !important;
-            box-shadow: 0px 4px 6px rgba(0,0,0,0.3) !important;
+            height: 60px !important;
         }}
         
-        .stButton > button p {{
+        /* Centraliza o texto dentro do botão */
+        .stMain button p {{
             width: 100%;
             text-align: center;
         }}
 
-        .stButton > button:hover {{
+        .stMain button:hover {{
             background-color: #b38b52 !important;
-            transform: scale(1.02);
+            transform: scale(1.01);
+        }}
+        
+        /* Garante que o container do botão também estique */
+        div[data-testid="stButton"] {{
+            width: 100% !important;
         }}
 
         /* Inputs */
@@ -201,18 +190,24 @@ def view_login_screen():
         st.markdown("<h3>Seja bem-vindo(a)</h3>", unsafe_allow_html=True)
         st.markdown("<p style='text-align: center; opacity: 0.8; margin-bottom: 40px;'>Selecione seu perfil de acesso</p>", unsafe_allow_html=True)
         
-        # SEM COLUNAS - Deixa o CSS cuidar da largura (90%) e margem (auto)
+        # --- LAYOUT DE COLUNA ÚNICA ---
+        # Usamos uma coluna central mais larga para controlar a largura máxima no desktop
+        # No mobile, isso vai ocupar a tela toda automaticamente.
         
-        if st.button("SOU CLIENTE"):
-            st.session_state['tipo_acesso'] = 'cliente'
-            st.rerun()
+        # Colunas: [Margem Esquerda, CONTEUDO, Margem Direita]
+        c1, c2, c3 = st.columns([0.1, 0.8, 0.1])
         
-        # Pequeno espaço vertical manual
-        st.markdown("<div style='height: 15px'></div>", unsafe_allow_html=True)
-        
-        if st.button("SOU ADVOGADO"):
-            st.session_state['tipo_acesso'] = 'interno'
-            st.rerun()
+        with c2:
+            # O CSS vai forçar este botão a ter 100% da largura da coluna 'c2'
+            if st.button("SOU CLIENTE"):
+                st.session_state['tipo_acesso'] = 'cliente'
+                st.rerun()
+            
+            st.markdown("<div style='height: 15px'></div>", unsafe_allow_html=True)
+            
+            if st.button("SOU ADVOGADO"):
+                st.session_state['tipo_acesso'] = 'interno'
+                st.rerun()
             
         return
 
@@ -231,7 +226,6 @@ def view_login_screen():
         
         st.markdown("<h3 style='margin-top:20px;'>Login Corporativo</h3>", unsafe_allow_html=True)
         
-        # Para formulários, colunas ainda são úteis para não ficar "esticado" demais
         c1, c2, c3 = st.columns([0.1, 0.8, 0.1])
         with c2:
             with st.form("login_form"):
@@ -239,7 +233,7 @@ def view_login_screen():
                 password = st.text_input("Senha", type="password")
                 st.write("")
                 
-                # Botão de entrar também será centralizado pelo CSS global (90% width)
+                # Botão Entrar também ficará Full Width
                 if st.form_submit_button("ENTRAR"):
                     hashed_pw = Utils.hash_password(password)
                     user_data = db.fetch_one("SELECT nome, funcao FROM usuarios WHERE username = ? AND senha = ?", (user, hashed_pw))
