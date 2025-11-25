@@ -46,7 +46,7 @@ def listar_arquivos_download(id_protocolo, quem_enviou):
         else:
             st.caption(f"Sem anexos de {quem_enviou}.")
 
-# --- 3. CSS "DEFINITIVO V2" (CORREÇÃO DO CONTÊINER PRINCIPAL) ---
+# --- 3. CSS "FLEXBOX PURO" (CENTRALIZAÇÃO RESPONSIVA) ---
 def configurar_estilo_visual():
     st.markdown(f"""
         <style>
@@ -57,19 +57,13 @@ def configurar_estilo_visual():
         [data-testid="stAppViewContainer"] {{ background-color: {COR_FUNDO}; color: white; }}
         [data-testid="stSidebar"] {{ background-color: {COR_SIDEBAR}; border-right: 1px solid {COR_DOURADO}; }}
         
-        /* --- A CORREÇÃO MATADORA PARA MOBILE --- */
-        /* Ajusta o padding do contêiner principal para garantir alinhamento central */
-        .main .block-container {{
-            padding-left: 1rem !important;
-            padding-right: 1rem !important;
-            max-width: 100% !important;
-        }}
-        
         /* Textos */
-        h1, h2, h3, h4 {{ color: {COR_DOURADO} !important; text-align: center !important; }}
+        h1, h2, h3 {{ color: {COR_DOURADO} !important; text-align: center; }}
         p, label, .stMarkdown {{ color: white !important; }}
         
-        /* --- CENTRALIZAÇÃO DA LOGO --- */
+        /* --- CENTRALIZAÇÃO DOS ELEMENTOS --- */
+        
+        /* 1. Centraliza a Logo */
         [data-testid="stImage"] {{
             display: flex;
             justify-content: center;
@@ -78,16 +72,14 @@ def configurar_estilo_visual():
             margin-bottom: 20px;
         }}
         
-        /* --- CENTRALIZAÇÃO DOS BOTÕES --- */
-        
-        /* O container que segura o botão */
+        /* 2. Centraliza o Container do Botão (A caixa invisível) */
         .stButton {{
             display: flex;
             justify-content: center;
-            width: 100%; /* Ocupa toda a largura disponível */
+            width: 100%;
         }}
         
-        /* O botão colorido em si */
+        /* 3. Estilo do Botão Primário (Dourado) */
         button[kind="primary"] {{
             background-color: {COR_DOURADO} !important;
             border: none !important;
@@ -96,32 +88,35 @@ def configurar_estilo_visual():
             border-radius: 8px !important;
             font-size: 18px !important;
             
-            /* Tamanho Fixo */
-            width: 280px !important;   
-            height: 65px !important;
+            /* LARGURA RESPONSIVA (O Segredo) */
+            width: 80% !important;      /* Ocupa 80% da tela no celular */
+            max-width: 350px !important; /* Mas não passa de 350px no PC */
+            height: 65px !important;     /* Altura fixa */
             
-            /* Centralização */
-            margin: 10px auto !important; /* Margem automática nas laterais */
+            /* Centralização interna do texto */
             display: flex !important;
             justify-content: center !important;
             align-items: center !important;
+            margin: 0 auto !important;
         }}
         
         button[kind="primary"] p {{
-            color: black !important; font-size: 20px !important; margin: 0 !important;
+            color: black !important; font-size: 18px !important; margin: 0 !important;
         }}
         
-        /* Botão Secundário (Voltar) */
+        /* 4. Estilo do Botão Secundário (Voltar) */
         button[kind="secondary"] {{
             background-color: transparent !important;
             border: 2px solid {COR_DOURADO} !important;
             color: {COR_DOURADO} !important;
-            width: 100% !important;
-            max-width: 280px !important; /* Mesma largura dos outros */
+            
+            /* Mesma regra de largura */
+            width: 80% !important;
+            max-width: 350px !important;
+            
             padding: 10px !important;
             border-radius: 8px !important;
-            margin: 10px auto !important; /* Centraliza também */
-            display: block !important;
+            margin-top: 15px !important;
         }}
         button[kind="secondary"] p {{ color: {COR_DOURADO} !important; font-weight: bold !important; }}
         
@@ -229,14 +224,16 @@ if st.session_state['usuario_logado'] is None:
         
         # MENSAGEM DE BOAS VINDAS
         st.markdown(f"<h1 style='margin-bottom: 0px;'>Seja bem-vindo(a)</h1>", unsafe_allow_html=True)
-        st.markdown("<h3 style='margin-top: 5px; margin-bottom: 40px; font-weight: normal; font-size: 18px;'>Selecione seu perfil de acesso</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='text-align: center; color: white; margin-top: 5px; margin-bottom: 40px; font-weight: normal; font-size: 18px;'>Selecione seu perfil de acesso</h3>", unsafe_allow_html=True)
         
-        # BOTÕES
+        # BOTÕES (Sem colunas, apenas empilhados e centralizados pelo CSS)
+        
         if st.button("Sou Cliente", type="primary"):
             st.session_state['tipo_acesso'] = 'cliente'
             st.rerun()
         
-        st.write("") 
+        # Espaço vertical manual para garantir separação
+        st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
         
         if st.button("Sou Advogado", type="primary"):
             st.session_state['tipo_acesso'] = 'interno'
@@ -244,7 +241,7 @@ if st.session_state['usuario_logado'] is None:
 
     # TELA 1: ÁREA DO CLIENTE
     elif st.session_state['tipo_acesso'] == 'cliente':
-        # Botão voltar centralizado pelo CSS
+        # Botão voltar
         if st.button("⬅ VOLTAR", type="secondary"):
             st.session_state['tipo_acesso'] = None
             st.rerun()
@@ -302,25 +299,23 @@ if st.session_state['usuario_logado'] is None:
             st.session_state['tipo_acesso'] = None
             st.rerun()
 
-        st.markdown("<h4>Login Corporativo</h4>", unsafe_allow_html=True)
+        st.markdown("<h4 style='text-align: center; color: white; margin-top: 20px;'>Login Corporativo</h4>", unsafe_allow_html=True)
         
-        # Centralizando o formulário de login
-        c_esq, c_login, c_dir = st.columns([1, 3, 1])
-        with c_login:
-            user = st.text_input("Login")
-            senha = st.text_input("Senha", type="password")
-            if st.button("ENTRAR", type="primary"):
-                conn = sqlite3.connect('dados_escritorio.db')
-                c = conn.cursor()
-                c.execute("SELECT nome, funcao FROM usuarios WHERE username = ? AND senha = ?", (user, senha))
-                res = c.fetchone()
-                conn.close()
-                if res:
-                    st.session_state['usuario_logado'] = res[0]
-                    st.session_state['funcao_usuario'] = res[1]
-                    st.rerun()
-                else:
-                    st.error("Acesso negado.")
+        # Centralizando Login com CSS (as colunas do streamlit as vezes atrapalham o width:100%)
+        user = st.text_input("Login")
+        senha = st.text_input("Senha", type="password")
+        if st.button("ENTRAR", type="primary"):
+            conn = sqlite3.connect('dados_escritorio.db')
+            c = conn.cursor()
+            c.execute("SELECT nome, funcao FROM usuarios WHERE username = ? AND senha = ?", (user, senha))
+            res = c.fetchone()
+            conn.close()
+            if res:
+                st.session_state['usuario_logado'] = res[0]
+                st.session_state['funcao_usuario'] = res[1]
+                st.rerun()
+            else:
+                st.error("Acesso negado.")
 
 # === MODO LOGADO ===
 else:
