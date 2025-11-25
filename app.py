@@ -1,9 +1,3 @@
-Ótimo, estamos avançando! O botão "Voltar" ficou perfeito.
-Agora vamos resolver os dois problemas visuais restantes no formulário de login:
- * O Botão "ENTRAR" Branco: Ele ficou assim porque o botão de envio de formulário (st.form_submit_button) às vezes ignora o CSS padrão de botões normais. Vamos forçar o estilo dele especificamente.
- * O Ícone do Olho (Senha): Ele está sumido ou estranho porque o Streamlit tenta usar a cor padrão (branca) num fundo que agora definimos como branco. Vamos pintar esse ícone de preto/azul escuro.
-Aqui está o código corrigido. Foquei o CSS para atacar exatamente esses pontos.
-Pode copiar e substituir tudo.
 import streamlit as st
 import sqlite3
 import pandas as pd
@@ -366,4 +360,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
