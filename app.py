@@ -46,7 +46,7 @@ def listar_arquivos_download(id_protocolo, quem_enviou):
         else:
             st.caption(f"Sem anexos de {quem_enviou}.")
 
-# --- 3. CSS "DEFINITIVO" (CENTRALIZAÇÃO PERFEITA) ---
+# --- 3. CSS "DEFINITIVO" (CENTRALIZAÇÃO TIPO BLOCO) ---
 def configurar_estilo_visual():
     st.markdown(f"""
         <style>
@@ -58,27 +58,31 @@ def configurar_estilo_visual():
         [data-testid="stSidebar"] {{ background-color: {COR_SIDEBAR}; border-right: 1px solid {COR_DOURADO}; }}
         
         /* Textos */
-        h1, h2, h3 {{ color: {COR_DOURADO} !important; text-align: center; }}
+        h1, h2, h3, h4 {{ color: {COR_DOURADO} !important; text-align: center !important; }}
         p, label, .stMarkdown {{ color: white !important; }}
         
-        /* Centralizar Logo */
+        /* --- CENTRALIZAÇÃO INFALÍVEL DA LOGO --- */
         [data-testid="stImage"] {{
             display: flex;
             justify-content: center;
             margin-bottom: 20px;
         }}
-        
-        /* --- CENTRALIZAÇÃO DOS BOTÕES NA TELA (O SEGREDO) --- */
-        /* Esta regra pega o container do botão e força o conteúdo para o centro */
-        .stButton {{
-            display: flex;
-            justify-content: center;
-            width: 100%;
+        /* Força a imagem em si a ficar no meio */
+        [data-testid="stImage"] > img {{
+             margin: 0 auto !important;
+             display: block !important;
         }}
         
-        /* --- ESTILO DOS BOTÕES (TAMANHO FIXO) --- */
+        /* --- CENTRALIZAÇÃO INFALÍVEL DOS BOTÕES --- */
         
-        /* Botão Primário (Dourado Cheio) */
+        /* Define o tamanho e centralização no CONTAINER do botão */
+        .stButton {{
+            width: 280px !important; /* Largura fixa para o bloco */
+            margin: 10px auto !important; /* Margem automática nas laterais centraliza! */
+            display: block !important;
+        }}
+        
+        /* O botão colorido em si preenche 100% do container já centralizado */
         button[kind="primary"] {{
             background-color: {COR_DOURADO} !important;
             border: none !important;
@@ -86,25 +90,17 @@ def configurar_estilo_visual():
             font-weight: bold !important;
             border-radius: 8px !important;
             font-size: 18px !important;
-            
-            /* Tamanho Fixo para ficarem iguais */
-            width: 280px !important;   
+            width: 100% !important; /* Preenche o container pai */
             height: 65px !important;
             
-            /* Garante que o texto DENTRO do botão esteja no meio */
+            /* Centraliza o texto DENTRO */
             display: flex !important;
             justify-content: center !important;
             align-items: center !important;
-            margin: 0 !important; /* Remove margens laterais do elemento */
         }}
         
-        /* Texto dentro do botão primário */
         button[kind="primary"] p {{
-            color: black !important;
-            font-size: 20px !important;
-            text-align: center !important;
-            margin: 0 !important;
-            padding: 0 !important;
+            color: black !important; font-size: 20px !important; margin: 0 !important;
         }}
         
         /* Botão Secundário (Voltar) */
@@ -112,21 +108,15 @@ def configurar_estilo_visual():
             background-color: transparent !important;
             border: 2px solid {COR_DOURADO} !important;
             color: {COR_DOURADO} !important;
-            
-            /* Mesmo tamanho máximo dos outros */
-            width: 100% !important;
-            max-width: 280px !important;
-            
+            width: 100% !important; /* Preenche o container pai */
             padding: 10px !important;
             border-radius: 8px !important;
-            margin-top: 10px !important;
         }}
         button[kind="secondary"] p {{ color: {COR_DOURADO} !important; font-weight: bold !important; }}
         
         /* Hover */
         button[kind="primary"]:hover {{ background-color: #b38b52 !important; }}
         button[kind="secondary"]:hover {{ border-color: white !important; color: white !important; }}
-        button[kind="secondary"]:hover p {{ color: white !important; }}
 
         /* --- INPUTS --- */
         div[data-baseweb="input"], div[data-baseweb="base-input"], div[data-baseweb="select"] > div {{
@@ -139,7 +129,6 @@ def configurar_estilo_visual():
         
         /* Resto */
         .stTabs [data-baseweb="tab-highlight"] {{ background-color: {COR_DOURADO} !important; }}
-        [data-testid="stImage"] {{ display: flex; justify-content: center; }}
         .block-container {{ padding-top: 3rem; }}
         </style>
     """, unsafe_allow_html=True)
@@ -227,17 +216,17 @@ if st.session_state['usuario_logado'] is None:
     # TELA 0: PÁGINA INICIAL (LANDING PAGE)
     if st.session_state['tipo_acesso'] is None:
         
-        # MENSAGEM DE BOAS VINDAS (NOVA)
-        st.markdown(f"<h1 style='color: {COR_DOURADO}; font-size: 32px; margin-bottom: 0px;'>Seja bem-vindo(a)</h1>", unsafe_allow_html=True)
-        st.markdown("<h3 style='text-align: center; color: white; margin-top: 5px; margin-bottom: 40px; font-weight: normal; font-size: 18px;'>Selecione seu perfil de acesso</h3>", unsafe_allow_html=True)
+        # MENSAGEM DE BOAS VINDAS
+        st.markdown(f"<h1 style='margin-bottom: 0px;'>Seja bem-vindo(a)</h1>", unsafe_allow_html=True)
+        st.markdown("<h3 style='margin-top: 5px; margin-bottom: 40px; font-weight: normal; font-size: 18px;'>Selecione seu perfil de acesso</h3>", unsafe_allow_html=True)
         
-        # BOTÕES CENTRALIZADOS VIA CSS
+        # BOTÕES (O CSS cuida da centralização e tamanho)
         if st.button("Sou Cliente", type="primary"):
             st.session_state['tipo_acesso'] = 'cliente'
             st.rerun()
         
-        # Espaço vertical
-        st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
+        # Pequeno espaço extra entre eles (opcional, pois o CSS já dá margem)
+        st.write("") 
         
         if st.button("Sou Advogado", type="primary"):
             st.session_state['tipo_acesso'] = 'interno'
@@ -245,11 +234,10 @@ if st.session_state['usuario_logado'] is None:
 
     # TELA 1: ÁREA DO CLIENTE
     elif st.session_state['tipo_acesso'] == 'cliente':
-        col_voltar, _ = st.columns([1, 2])
-        with col_voltar:
-            if st.button("⬅ VOLTAR", type="secondary"):
-                st.session_state['tipo_acesso'] = None
-                st.rerun()
+        # Botão voltar também será centralizado pelo CSS do .stButton
+        if st.button("⬅ VOLTAR", type="secondary"):
+            st.session_state['tipo_acesso'] = None
+            st.rerun()
             
         st.info("Bem-vindo ao canal oficial de atendimento.")
         
@@ -300,16 +288,15 @@ if st.session_state['usuario_logado'] is None:
 
     # TELA 2: LOGIN DA EQUIPE
     elif st.session_state['tipo_acesso'] == 'interno':
-        col_voltar, _ = st.columns([1, 2])
-        with col_voltar:
-            if st.button("⬅ VOLTAR", type="secondary"):
-                st.session_state['tipo_acesso'] = None
-                st.rerun()
+        if st.button("⬅ VOLTAR", type="secondary"):
+            st.session_state['tipo_acesso'] = None
+            st.rerun()
 
-        st.markdown("<h4 style='text-align: center; color: white; margin-top: 20px;'>Login Corporativo</h4>", unsafe_allow_html=True)
+        st.markdown("<h4>Login Corporativo</h4>", unsafe_allow_html=True)
         
-        col_login, _ = st.columns([1, 0.1])
-        with col_login:
+        # Centralizando o formulário de login também
+        c_esq, c_login, c_dir = st.columns([1, 3, 1])
+        with c_login:
             user = st.text_input("Login")
             senha = st.text_input("Senha", type="password")
             if st.button("ENTRAR", type="primary"):
