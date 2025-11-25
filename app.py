@@ -19,7 +19,7 @@ st.set_page_config(
     page_title=TITULO_ABA, 
     page_icon="⚖️", 
     layout="wide", 
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="auto"
 )
 
 # --- 2. FUNÇÕES DE ARQUIVOS ---
@@ -46,7 +46,7 @@ def listar_arquivos_download(id_protocolo, quem_enviou):
         else:
             st.caption(f"Sem anexos de {quem_enviou}.")
 
-# --- 3. CSS ESTILIZADO (CORREÇÕES VISUAIS FINAIS) ---
+# --- 3. CSS "AGRESSIVO" (CORREÇÃO DE BOTÕES E ALINHAMENTO) ---
 def configurar_estilo_visual():
     st.markdown(f"""
         <style>
@@ -58,63 +58,65 @@ def configurar_estilo_visual():
         [data-testid="stSidebar"] {{ background-color: {COR_SIDEBAR}; border-right: 1px solid {COR_DOURADO}; }}
         
         /* Textos */
-        h1, h2, h3 {{ color: {COR_DOURADO} !important; text-align: center; }} /* Títulos centralizados */
+        h1, h2, h3 {{ color: {COR_DOURADO} !important; }}
         p, label, .stMarkdown {{ color: white !important; }}
         
-        /* --- CORREÇÃO DOS BOTÕES --- */
+        /* --- CORREÇÃO DOS BOTÕES (LARGURA IGUAL) --- */
         
-        /* 1. Botão Primário (Dourado) - Tela Inicial e Forms */
-        [data-testid="stFormSubmitButton"] > button,
-        [data-testid="baseButton-primary"] {{
+        /* Botão Primário (Dourado Cheio) */
+        button[kind="primary"] {{
             background-color: {COR_DOURADO} !important;
             border: none !important;
-            width: 100%;
-            padding: 15px !important; /* Mais alto para ficar bonito */
-        }}
-        
-        /* Garante que o texto dentro do botão primário seja PRETO e CENTRALIZADO */
-        [data-testid="stFormSubmitButton"] > button p,
-        [data-testid="baseButton-primary"] p {{
-            color: black !important; 
+            color: black !important;
             font-weight: bold !important;
+            width: 100% !important; /* Força largura total */
+            padding: 15px !important; /* Altura maior */
+            border-radius: 8px !important;
             font-size: 18px !important;
-            text-align: center !important;
-            margin: auto !important; /* Força centralização vertical/horizontal */
+            margin-top: 10px !important;
         }}
         
-        /* 2. Botão Secundário (Voltar) - Agora visível! */
-        [data-testid="baseButton-secondary"] {{
-            background-color: {COR_FUNDO} !important; /* Fundo Escuro */
-            border: 2px solid {COR_DOURADO} !important; /* Borda Dourada grossa */
-            width: 100%;
+        /* Texto dentro do botão primário (Garantia Extra) */
+        button[kind="primary"] p {{
+            color: black !important;
+            font-size: 18px !important;
+        }}
+        
+        /* Botão Secundário (Voltar - Fundo Escuro e Borda Dourada) */
+        button[kind="secondary"] {{
+            background-color: transparent !important;
+            border: 2px solid {COR_DOURADO} !important;
+            color: {COR_DOURADO} !important;
+            width: 100% !important; /* Força largura total */
             padding: 10px !important;
+            border-radius: 8px !important;
+            margin-top: 10px !important;
         }}
         
-        /* Texto do botão voltar (Dourado) */
-        [data-testid="baseButton-secondary"] p {{
+        /* Texto dentro do botão secundário */
+        button[kind="secondary"] p {{
             color: {COR_DOURADO} !important;
             font-weight: bold !important;
-            text-align: center !important;
-            margin: auto !important;
         }}
+        
+        /* Hover (Efeito ao passar mouse/dedo) */
+        button[kind="primary"]:hover {{ background-color: #b38b52 !important; }}
+        button[kind="secondary"]:hover {{ border-color: white !important; color: white !important; }}
+        button[kind="secondary"]:hover p {{ color: white !important; }}
 
-        /* --- INPUTS E SENHA --- */
+        /* --- INPUTS --- */
         div[data-baseweb="input"], div[data-baseweb="base-input"], div[data-baseweb="select"] > div {{
             background-color: white !important;
             border: 2px solid {COR_DOURADO} !important;
             border-radius: 8px !important;
         }}
-        div[data-baseweb="base-input"], div[data-testid="stTextInputRootElement"] > div {{
-            background-color: transparent !important;
-            border: none !important;
-        }}
-        input {{ color: black !important; background-color: transparent !important; }}
-        button[aria-label="Password visibility"] {{ background: transparent !important; color: {COR_FUNDO} !important; }}
+        input {{ color: black !important; }}
+        button[aria-label="Password visibility"] {{ color: {COR_FUNDO} !important; }}
         
         /* Resto */
         .stTabs [data-baseweb="tab-highlight"] {{ background-color: {COR_DOURADO} !important; }}
         [data-testid="stImage"] {{ display: flex; justify-content: center; }}
-        .block-container {{ padding-top: 3rem; }} /* Mais espaço no topo */
+        .block-container {{ padding-top: 2rem; }}
         </style>
     """, unsafe_allow_html=True)
 
@@ -153,7 +155,7 @@ def init_db():
 
 init_db()
 
-# --- 5. VARIÁVEIS DE ESTADO ---
+# --- 5. VARIÁVEIS E SIDEBAR ---
 if 'usuario_logado' not in st.session_state:
     st.session_state['usuario_logado'] = None
 if 'funcao_usuario' not in st.session_state:
@@ -187,10 +189,10 @@ def sidebar_logada():
 
 # --- 6. LÓGICA DO SISTEMA ---
 
-# HEADER
+# Header
 try:
     logo = Image.open("logo.png")
-    st.image(logo, width=240) # Um pouco maior
+    st.image(logo, width=240)
 except:
     st.title(NOME_ESCRITORIO)
 st.write("")
@@ -198,20 +200,20 @@ st.write("")
 # === SE NÃO ESTIVER LOGADO ===
 if st.session_state['usuario_logado'] is None:
     
-    # TELA 0: PÁGINA INICIAL (LANDING PAGE) - LAYOUT CORRIGIDO
+    # TELA 0: PÁGINA INICIAL (LANDING PAGE)
     if st.session_state['tipo_acesso'] is None:
         st.markdown("<h3 style='text-align: center; color: white; margin-bottom: 30px;'>Selecione seu perfil de acesso</h3>", unsafe_allow_html=True)
         
-        # Usando colunas para centralizar e dar largura igual
-        c_espaco_esq, c_botoes, c_espaco_dir = st.columns([1, 4, 1]) # 4/6 da tela para os botões
+        # Layout: Colunas para centralizar no PC, mas com botões largos
+        c1, c2, c3 = st.columns([1, 4, 1]) 
         
-        with c_botoes:
+        with c2:
+            # Botões sem espaços extras, CSS cuida da largura
             if st.button("SOU CLIENTE", type="primary"):
                 st.session_state['tipo_acesso'] = 'cliente'
                 st.rerun()
             
-            st.write("") # Espaço entre botões
-            st.write("")
+            st.markdown("<div style='margin: 15px;'></div>", unsafe_allow_html=True) # Espaçamento manual seguro
             
             if st.button("SOU DA EQUIPE (ADVOGADO)", type="primary"):
                 st.session_state['tipo_acesso'] = 'interno'
@@ -219,10 +221,11 @@ if st.session_state['usuario_logado'] is None:
 
     # TELA 1: ÁREA DO CLIENTE
     elif st.session_state['tipo_acesso'] == 'cliente':
-        # Botão voltar agora é visível (Fundo escuro, texto dourado)
-        if st.button("⬅ Voltar ao Início", type="secondary"):
-            st.session_state['tipo_acesso'] = None
-            st.rerun()
+        col_voltar, _ = st.columns([1, 2])
+        with col_voltar:
+            if st.button("⬅ VOLTAR", type="secondary"):
+                st.session_state['tipo_acesso'] = None
+                st.rerun()
             
         st.info("Bem-vindo ao canal oficial de atendimento.")
         
@@ -253,7 +256,7 @@ if st.session_state['usuario_logado'] is None:
         
         with aba2:
             prot = st.number_input("Número do Protocolo", min_value=1, step=1)
-            if st.button("PESQUISAR"):
+            if st.button("PESQUISAR", type="primary"):
                 conn = sqlite3.connect('dados_escritorio.db')
                 df = pd.read_sql_query(f"SELECT * FROM chamados WHERE id = {prot}", conn)
                 conn.close()
@@ -273,9 +276,11 @@ if st.session_state['usuario_logado'] is None:
 
     # TELA 2: LOGIN DA EQUIPE
     elif st.session_state['tipo_acesso'] == 'interno':
-        if st.button("⬅ Voltar ao Início", type="secondary"):
-            st.session_state['tipo_acesso'] = None
-            st.rerun()
+        col_voltar, _ = st.columns([1, 2])
+        with col_voltar:
+            if st.button("⬅ VOLTAR", type="secondary"):
+                st.session_state['tipo_acesso'] = None
+                st.rerun()
 
         st.markdown("<h4 style='text-align: center; color: white; margin-top: 20px;'>Login Corporativo</h4>", unsafe_allow_html=True)
         
