@@ -46,7 +46,7 @@ def listar_arquivos_download(id_protocolo, quem_enviou):
         else:
             st.caption(f"Sem anexos de {quem_enviou}.")
 
-# --- 3. CSS "AGRESSIVO" (CORREÇÃO DE BOTÕES E ALINHAMENTO) ---
+# --- 3. CSS "AGRESSIVO" (CORREÇÃO FINAL DE BOTÕES) ---
 def configurar_estilo_visual():
     st.markdown(f"""
         <style>
@@ -61,7 +61,7 @@ def configurar_estilo_visual():
         h1, h2, h3 {{ color: {COR_DOURADO} !important; }}
         p, label, .stMarkdown {{ color: white !important; }}
         
-        /* --- CORREÇÃO DOS BOTÕES (LARGURA IGUAL) --- */
+        /* --- CORREÇÃO DOS BOTÕES (TAMANHOS IGUAIS) --- */
         
         /* Botão Primário (Dourado Cheio) */
         button[kind="primary"] {{
@@ -69,37 +69,33 @@ def configurar_estilo_visual():
             border: none !important;
             color: black !important;
             font-weight: bold !important;
-            width: 100% !important; /* Força largura total */
-            padding: 15px !important; /* Altura maior */
+            width: 100% !important; /* Largura total */
+            min-height: 60px !important; /* Altura mínima garantida */
             border-radius: 8px !important;
             font-size: 18px !important;
-            margin-top: 10px !important;
+            margin-bottom: 15px !important; /* Espaço abaixo */
         }}
         
-        /* Texto dentro do botão primário (Garantia Extra) */
+        /* Texto dentro do botão primário */
         button[kind="primary"] p {{
             color: black !important;
             font-size: 18px !important;
+            margin: auto !important; /* Centraliza texto verticalmente */
         }}
         
-        /* Botão Secundário (Voltar - Fundo Escuro e Borda Dourada) */
+        /* Botão Secundário (Voltar) */
         button[kind="secondary"] {{
             background-color: transparent !important;
             border: 2px solid {COR_DOURADO} !important;
             color: {COR_DOURADO} !important;
-            width: 100% !important; /* Força largura total */
+            width: 100% !important;
             padding: 10px !important;
             border-radius: 8px !important;
             margin-top: 10px !important;
         }}
+        button[kind="secondary"] p {{ color: {COR_DOURADO} !important; font-weight: bold !important; }}
         
-        /* Texto dentro do botão secundário */
-        button[kind="secondary"] p {{
-            color: {COR_DOURADO} !important;
-            font-weight: bold !important;
-        }}
-        
-        /* Hover (Efeito ao passar mouse/dedo) */
+        /* Hover */
         button[kind="primary"]:hover {{ background-color: #b38b52 !important; }}
         button[kind="secondary"]:hover {{ border-color: white !important; color: white !important; }}
         button[kind="secondary"]:hover p {{ color: white !important; }}
@@ -200,24 +196,20 @@ st.write("")
 # === SE NÃO ESTIVER LOGADO ===
 if st.session_state['usuario_logado'] is None:
     
-    # TELA 0: PÁGINA INICIAL (LANDING PAGE)
+    # TELA 0: PÁGINA INICIAL (LANDING PAGE) - BOTÕES IDÊNTICOS
     if st.session_state['tipo_acesso'] is None:
         st.markdown("<h3 style='text-align: center; color: white; margin-bottom: 30px;'>Selecione seu perfil de acesso</h3>", unsafe_allow_html=True)
         
-        # Layout: Colunas para centralizar no PC, mas com botões largos
-        c1, c2, c3 = st.columns([1, 4, 1]) 
+        # Sem colunas, deixa o CSS controlar a largura total
+        if st.button("1- Sou Cliente", type="primary"):
+            st.session_state['tipo_acesso'] = 'cliente'
+            st.rerun()
         
-        with c2:
-            # Botões sem espaços extras, CSS cuida da largura
-            if st.button("SOU CLIENTE", type="primary"):
-                st.session_state['tipo_acesso'] = 'cliente'
-                st.rerun()
-            
-            st.markdown("<div style='margin: 15px;'></div>", unsafe_allow_html=True) # Espaçamento manual seguro
-            
-            if st.button("SOU DA EQUIPE (ADVOGADO)", type="primary"):
-                st.session_state['tipo_acesso'] = 'interno'
-                st.rerun()
+        # O espaçamento agora é feito pela margem do botão no CSS
+        
+        if st.button("2- Sou Advogado", type="primary"):
+            st.session_state['tipo_acesso'] = 'interno'
+            st.rerun()
 
     # TELA 1: ÁREA DO CLIENTE
     elif st.session_state['tipo_acesso'] == 'cliente':
