@@ -28,14 +28,11 @@ st.set_page_config(
     initial_sidebar_state="auto"
 )
 
-# --- 2. GERENCIADORES (SERVICES/DAOs) ---
+# --- 2. GERENCIADORES (SERVICES) ---
 
 class Utils:
-    """Utilitários gerais e de segurança."""
-    
     @staticmethod
     def get_image_base64(path):
-        """Converte imagem para base64 para uso em HTML puro."""
         try:
             with open(path, "rb") as image_file:
                 encoded = base64.b64encode(image_file.read()).decode()
@@ -71,8 +68,6 @@ class FileManager:
                 if file_path.is_file():
                     with open(file_path, "rb") as f:
                         st.download_button(f"⬇️ Baixar {file_path.name}", f, file_name=file_path.name, key=f"dl_{protocol_id}_{uploader_type}_{file_path.name}")
-        else:
-            st.caption(f"Sem anexos de {uploader_type}.")
 
 class DatabaseManager:
     def __init__(self, db_name: str):
@@ -108,7 +103,8 @@ class DatabaseManager:
 
 db = DatabaseManager(CONFIG["DB_NAME"])
 
-# --- 3. CSS "NUCLEAR" (CORREÇÃO DE LAYOUT) ---
+# --- 3. CSS "LAYOUT FORCE" ---
+# Esta é a parte que conserta o mobile
 
 def inject_custom_css():
     st.markdown(f"""
@@ -123,41 +119,49 @@ def inject_custom_css():
         h1, h2, h3 {{ color: {CONFIG['COLORS']['GOLD']} !important; text-align: center; }}
         p, label {{ color: white !important; }}
 
-        /* --- CORREÇÃO DEFINITIVA DOS BOTÕES --- */
+        /* --- CORREÇÃO DE BOTÕES (CSS HARDCORE) --- */
         
-        /* 1. Alvo: Container do botão */
-        .stButton {{
-            width: 100% !important;
+        /* O container do botão no Streamlit */
+        div.stButton {{
             display: flex;
-            justify-content: center;
+            justify-content: center; /* Centraliza o flex container */
+            margin-top: 10px;
+            margin-bottom: 10px;
         }}
 
-        /* 2. Alvo: O botão propriamente dito */
-        .stButton > button {{
-            width: 100% !important;          /* Ocupa toda a largura da coluna pai */
-            height: 60px !important;         /* Altura fixa igual para todos */
+        /* O botão em si */
+        div.stButton > button {{
+            /* Tamanho fixo e igual para todos */
+            width: 280px !important; 
+            max-width: 90vw !important; /* Segurança para telas muito pequenas */
+            height: 60px !important;
+            
+            /* Centralização do bloco via margem (funciona mesmo sem flex) */
+            margin-left: auto !important;
+            margin-right: auto !important;
+            display: block !important;
+            
+            /* Estilo */
             background-color: {CONFIG['COLORS']['GOLD']} !important;
             color: #00202f !important;
             border: none !important;
             border-radius: 8px !important;
             font-weight: bold !important;
-            font-size: 18px !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
+            font-size: 16px !important;
+            text-transform: uppercase !important;
         }}
         
-        /* 3. Correção de texto dentro do botão (garante centralização) */
-        .stButton > button p {{
-            font-size: 18px !important;
-            text-align: center !important;
-            width: 100% !important;
+        /* Centralizar texto dentro do botão */
+        div.stButton > button p {{
+            width: 100%;
+            text-align: center;
         }}
 
-        /* Botão Hover */
-        .stButton > button:hover {{
+        /* Hover */
+        div.stButton > button:hover {{
             background-color: #b38b52 !important;
-            transform: scale(1.01);
+            transform: scale(1.02);
+            transition: 0.2s;
         }}
 
         /* Inputs */
@@ -168,18 +172,16 @@ def inject_custom_css():
         }}
         input, textarea {{ color: black !important; }}
         
-        /* Esconde Header Streamlit */
         header {{ visibility: hidden; }}
         </style>
     """, unsafe_allow_html=True)
 
 def render_logo_html():
-    """Renderiza a logo via HTML para garantir centralização absoluta."""
     img_b64 = Utils.get_image_base64("logo.png")
     if img_b64:
         st.markdown(f"""
             <div style="display: flex; justify-content: center; margin-bottom: 20px;">
-                <img src="{img_b64}" style="max-width: 250px; width: 80%; object-fit: contain;">
+                <img src="{img_b64}" style="max-width: 250px; width: 70%; object-fit: contain;">
             </div>
         """, unsafe_allow_html=True)
     else:
@@ -197,7 +199,6 @@ def render_sidebar():
 # --- 4. TELAS ---
 
 def view_login_screen():
-    # Logo Centralizada via HTML
     render_logo_html()
     
     st.write("")
@@ -206,51 +207,43 @@ def view_login_screen():
         st.markdown("<h3>Seja bem-vindo(a)</h3>", unsafe_allow_html=True)
         st.markdown("<p style='text-align: center; opacity: 0.8; margin-bottom: 30px;'>Selecione seu perfil de acesso</p>", unsafe_allow_html=True)
         
-        # ESTRATÉGIA DE COLUNAS MÓVEIS
-        # Usamos colunas vazias nas pontas para "empurrar" o conteúdo pro meio
-        # No mobile, essas colunas diminuem, mas o botão preenche 100% do meio
-        col_esq, col_meio, col_dir = st.columns([1, 4, 1]) 
+        # REMOVIDO ST.COLUMNS: Isso causava o bug no mobile.
+        # Agora confiamos 100% no CSS 'margin: auto' definido acima.
         
-        with col_meio:
-            if st.button("SOU CLIENTE"):
-                st.session_state['tipo_acesso'] = 'cliente'
-                st.rerun()
+        if st.button("SOU CLIENTE"):
+            st.session_state['tipo_acesso'] = 'cliente'
+            st.rerun()
+        
+        if st.button("SOU ADVOGADO"):
+            st.session_state['tipo_acesso'] = 'interno'
+            st.rerun()
             
-            st.write("") # Espaçamento vertical
-            
-            if st.button("SOU ADVOGADO"):
-                st.session_state['tipo_acesso'] = 'interno'
-                st.rerun()
         return
 
     # Tela Cliente
     if st.session_state['tipo_acesso'] == 'cliente':
-        col_esq, col_meio, col_dir = st.columns([1, 4, 1])
-        with col_meio:
-            if st.button("⬅ Voltar"):
-                del st.session_state['tipo_acesso']
-                st.rerun()
+        # Botão voltar (o CSS já vai centralizar ele também)
+        if st.button("⬅ VOLTAR"):
+            del st.session_state['tipo_acesso']
+            st.rerun()
         view_client_area()
 
     # Tela Login Interno
     elif st.session_state['tipo_acesso'] == 'interno':
-        col_esq, col_meio, col_dir = st.columns([1, 4, 1])
-        with col_meio:
-            if st.button("⬅ Voltar"):
-                del st.session_state['tipo_acesso']
-                st.rerun()
+        if st.button("⬅ VOLTAR"):
+            del st.session_state['tipo_acesso']
+            st.rerun()
         
         st.markdown("<h3 style='margin-top:20px;'>Login Corporativo</h3>", unsafe_allow_html=True)
         
-        c1, c2, c3 = st.columns([1, 4, 1])
+        # Formulário levemente mais estreito visualmente
+        c1, c2, c3 = st.columns([0.1, 0.8, 0.1])
         with c2:
             with st.form("login_form"):
                 user = st.text_input("Usuário")
                 password = st.text_input("Senha", type="password")
                 st.write("")
-                # Botão de entrar também deve ser largo
-                submitted = st.form_submit_button("ENTRAR")
-                if submitted:
+                if st.form_submit_button("ENTRAR"):
                     hashed_pw = Utils.hash_password(password)
                     user_data = db.fetch_one("SELECT nome, funcao FROM usuarios WHERE username = ? AND senha = ?", (user, hashed_pw))
                     if user_data:
@@ -284,7 +277,6 @@ def view_client_area():
             if not df.empty:
                 row = df.iloc[0]
                 st.write(f"**Status:** {row['status']}")
-                FileManager.list_files(prot, "cliente")
                 if row['resposta_publica']:
                     st.info(f"Resposta: {row['resposta_publica']}")
                     FileManager.list_files(prot, "advogado")
@@ -310,13 +302,10 @@ def view_admin_dashboard():
 def _render_triagem():
     df = db.fetch_data("SELECT * FROM chamados WHERE status='Aberto'")
     staff = db.fetch_data("SELECT nome FROM usuarios WHERE funcao != 'Sócio-Proprietário'")['nome'].tolist()
-    if df.empty:
-        st.success("Tudo limpo.")
-        return
+    if df.empty: st.success("Limpo."); return
     for _, row in df.iterrows():
         with st.expander(f"#{row['id']} - {row['cliente_nome']}", expanded=True):
             st.write(row['descricao'])
-            FileManager.list_files(row['id'], "cliente")
             c1, c2 = st.columns(2)
             with c1:
                 sel = st.selectbox("Delegar", staff, key=f"s_{row['id']}")
@@ -324,8 +313,7 @@ def _render_triagem():
                     db.execute_query("UPDATE chamados SET responsavel = ?, status = 'Em Análise' WHERE id = ?", (sel, row['id']))
                     st.rerun()
             with c2:
-                if st.button("Finalizar Agora", key=f"f_{row['id']}"):
-                    # Simplificado para exemplo
+                if st.button("Finalizar", key=f"f_{row['id']}"):
                     db.execute_query("UPDATE chamados SET status = 'Concluído', responsavel = 'Sócio' WHERE id = ?", (row['id'],))
                     st.rerun()
 
@@ -333,7 +321,7 @@ def _render_validacao():
     df = db.fetch_data("SELECT * FROM chamados WHERE status='Pendente Aprovação'")
     if df.empty: st.info("Vazio."); return
     for _, row in df.iterrows():
-        st.write(f"#{row['id']} - {row['resposta_interna']}")
+        st.write(f"Minuta: {row['resposta_interna']}")
         if st.button(f"Aprovar #{row['id']}"):
             db.execute_query("UPDATE chamados SET resposta_publica = ?, status = 'Concluído' WHERE id = ?", (row['resposta_interna'], row['id']))
             st.rerun()
