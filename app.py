@@ -58,11 +58,18 @@ def configurar_estilo_visual():
         [data-testid="stSidebar"] {{ background-color: {COR_SIDEBAR}; border-right: 1px solid {COR_DOURADO}; }}
         
         /* Textos */
-        h1, h2, h3 {{ color: {COR_DOURADO} !important; }}
+        h1, h2, h3 {{ color: {COR_DOURADO} !important; text-align: center; }}
         p, label, .stMarkdown {{ color: white !important; }}
         
-        /* --- CENTRALIZAÇÃO DOS BOTÕES NA TELA --- */
-        /* Esta regra força a 'caixa invisível' do botão a centralizar seu conteúdo */
+        /* Centralizar Logo */
+        [data-testid="stImage"] {{
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }}
+        
+        /* --- CENTRALIZAÇÃO DOS BOTÕES NA TELA (O SEGREDO) --- */
+        /* Esta regra pega o container do botão e força o conteúdo para o centro */
         .stButton {{
             display: flex;
             justify-content: center;
@@ -84,11 +91,11 @@ def configurar_estilo_visual():
             width: 280px !important;   
             height: 65px !important;
             
-            /* Centraliza o texto DENTRO do botão */
+            /* Garante que o texto DENTRO do botão esteja no meio */
             display: flex !important;
             justify-content: center !important;
             align-items: center !important;
-            margin: 0 auto !important; /* Margem automática */
+            margin: 0 !important; /* Remove margens laterais do elemento */
         }}
         
         /* Texto dentro do botão primário */
@@ -97,6 +104,7 @@ def configurar_estilo_visual():
             font-size: 20px !important;
             text-align: center !important;
             margin: 0 !important;
+            padding: 0 !important;
         }}
         
         /* Botão Secundário (Voltar) */
@@ -104,8 +112,11 @@ def configurar_estilo_visual():
             background-color: transparent !important;
             border: 2px solid {COR_DOURADO} !important;
             color: {COR_DOURADO} !important;
-            width: 100% !important; /* Ocupa largura total do container (que pode ser menor) */
-            max-width: 280px !important; /* Mesma largura máxima dos outros */
+            
+            /* Mesmo tamanho máximo dos outros */
+            width: 100% !important;
+            max-width: 280px !important;
+            
             padding: 10px !important;
             border-radius: 8px !important;
             margin-top: 10px !important;
@@ -129,7 +140,7 @@ def configurar_estilo_visual():
         /* Resto */
         .stTabs [data-baseweb="tab-highlight"] {{ background-color: {COR_DOURADO} !important; }}
         [data-testid="stImage"] {{ display: flex; justify-content: center; }}
-        .block-container {{ padding-top: 2rem; }}
+        .block-container {{ padding-top: 3rem; }}
         </style>
     """, unsafe_allow_html=True)
 
@@ -215,16 +226,18 @@ if st.session_state['usuario_logado'] is None:
     
     # TELA 0: PÁGINA INICIAL (LANDING PAGE)
     if st.session_state['tipo_acesso'] is None:
-        st.markdown("<h3 style='text-align: center; color: white; margin-bottom: 40px;'>Selecione seu perfil de acesso</h3>", unsafe_allow_html=True)
         
-        # Sem colunas, layout vertical puro
+        # MENSAGEM DE BOAS VINDAS (NOVA)
+        st.markdown(f"<h1 style='color: {COR_DOURADO}; font-size: 32px; margin-bottom: 0px;'>Seja bem-vindo(a)</h1>", unsafe_allow_html=True)
+        st.markdown("<h3 style='text-align: center; color: white; margin-top: 5px; margin-bottom: 40px; font-weight: normal; font-size: 18px;'>Selecione seu perfil de acesso</h3>", unsafe_allow_html=True)
         
+        # BOTÕES CENTRALIZADOS VIA CSS
         if st.button("Sou Cliente", type="primary"):
             st.session_state['tipo_acesso'] = 'cliente'
             st.rerun()
         
-        # Espaço via markdown pra garantir separação
-        st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
+        # Espaço vertical
+        st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
         
         if st.button("Sou Advogado", type="primary"):
             st.session_state['tipo_acesso'] = 'interno'
