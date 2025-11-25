@@ -46,7 +46,7 @@ def listar_arquivos_download(id_protocolo, quem_enviou):
         else:
             st.caption(f"Sem anexos de {quem_enviou}.")
 
-# --- 3. CSS "DEFINITIVO MOBILE" ---
+# --- 3. CSS "DUPLA SEGURANÇA" (CENTRALIZAÇÃO) ---
 def configurar_estilo_visual():
     st.markdown(f"""
         <style>
@@ -65,20 +65,23 @@ def configurar_estilo_visual():
         [data-testid="stImage"] {{
             display: flex;
             justify-content: center;
+            align-items: center;
             margin-bottom: 20px;
         }}
-        
-        /* --- O SEGREDO DA CENTRALIZAÇÃO (MUDANÇA AQUI) --- */
-        
-        /* 1. O Container do Botão (A caixa invisível) */
-        .stButton {{
-            display: flex !important;
-            justify-content: center !important; /* Centraliza horizontalmente */
-            width: 100% !important;
-            margin-bottom: 15px !important;
+        [data-testid="stImage"] > img {{
+            margin: 0 auto; /* Garante que a imagem fique no meio */
         }}
         
-        /* 2. O Botão Colorido em si */
+        /* --- O TRUQUE DA CENTRALIZAÇÃO DUPLA --- */
+        
+        /* 1. A Caixa "Pai" do Botão */
+        div.stButton {{
+            display: flex !important;
+            justify-content: center !important; /* Alinha o conteúdo ao centro */
+            width: 100% !important;
+        }}
+        
+        /* 2. O Botão em si */
         button[kind="primary"] {{
             background-color: {COR_DOURADO} !important;
             border: none !important;
@@ -87,19 +90,23 @@ def configurar_estilo_visual():
             border-radius: 8px !important;
             font-size: 18px !important;
             
-            /* AQUI ESTÁ A MÁGICA DO TAMANHO IGUAL */
-            width: 100% !important;      /* Tenta ocupar tudo */
-            max-width: 320px !important; /* Mas para em 320px (Tamanho de celular) */
-            height: 65px !important;     /* Altura fixa */
+            /* Tamanho */
+            width: 80% !important;
+            max-width: 300px !important;
+            height: 60px !important;
             
-            /* Centraliza o texto DENTRO */
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center !important;
+            /* Centralização Extra (Segurança) */
+            margin-left: auto !important;
+            margin-right: auto !important;
+            display: block !important;
         }}
         
+        /* Texto dentro do botão */
         button[kind="primary"] p {{
-            color: black !important; font-size: 20px !important; margin: 0 !important;
+            color: black !important; 
+            font-size: 18px !important;
+            text-align: center !important;
+            width: 100%;
         }}
         
         /* Botão Secundário (Voltar) */
@@ -107,12 +114,15 @@ def configurar_estilo_visual():
             background-color: transparent !important;
             border: 2px solid {COR_DOURADO} !important;
             color: {COR_DOURADO} !important;
-            
-            width: 100% !important;
-            max-width: 320px !important; /* Mesmo tamanho maximo */
-            
+            width: 80% !important;
+            max-width: 300px !important;
             padding: 10px !important;
             border-radius: 8px !important;
+            
+            margin-left: auto !important;
+            margin-right: auto !important;
+            display: block !important;
+            margin-top: 10px !important;
         }}
         button[kind="secondary"] p {{ color: {COR_DOURADO} !important; font-weight: bold !important; }}
         
@@ -219,14 +229,14 @@ if st.session_state['usuario_logado'] is None:
     if st.session_state['tipo_acesso'] is None:
         
         st.markdown(f"<h1 style='margin-bottom: 0px;'>Seja bem-vindo(a)</h1>", unsafe_allow_html=True)
-        st.markdown("<h3 style='margin-top: 5px; margin-bottom: 40px; font-weight: normal; font-size: 18px;'>Selecione seu perfil de acesso</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='text-align: center; color: white; margin-top: 5px; margin-bottom: 40px; font-weight: normal; font-size: 18px;'>Selecione seu perfil de acesso</h3>", unsafe_allow_html=True)
         
-        # --- AQUI ESTÁ A MUDANÇA: SEM COLUNAS ---
-        # Deixamos os botões soltos na página. O CSS (.stButton) vai cuidar de centralizá-los
-        
+        # BOTÕES (Agora com centralização dupla no CSS)
         if st.button("Sou Cliente", type="primary"):
             st.session_state['tipo_acesso'] = 'cliente'
             st.rerun()
+        
+        st.write("") 
         
         if st.button("Sou Advogado", type="primary"):
             st.session_state['tipo_acesso'] = 'interno'
@@ -234,6 +244,7 @@ if st.session_state['usuario_logado'] is None:
 
     # TELA 1: ÁREA DO CLIENTE
     elif st.session_state['tipo_acesso'] == 'cliente':
+        # Botão voltar com estilo secundário
         if st.button("⬅ VOLTAR", type="secondary"):
             st.session_state['tipo_acesso'] = None
             st.rerun()
@@ -293,7 +304,7 @@ if st.session_state['usuario_logado'] is None:
 
         st.markdown("<h4 style='text-align: center; color: white; margin-top: 20px;'>Login Corporativo</h4>", unsafe_allow_html=True)
         
-        # Login Centralizado também (sem colunas laterais para não espremer)
+        # Centralizando Login (Sem colunas, CSS cuida)
         user = st.text_input("Login")
         senha = st.text_input("Senha", type="password")
         if st.button("ENTRAR", type="primary"):
