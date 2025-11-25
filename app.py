@@ -103,8 +103,7 @@ class DatabaseManager:
 
 db = DatabaseManager(CONFIG["DB_NAME"])
 
-# --- 3. CSS "LAYOUT FORCE" ---
-# Esta é a parte que conserta o mobile
+# --- 3. CSS "CENTRALIZAÇÃO ABSOLUTA" ---
 
 def inject_custom_css():
     st.markdown(f"""
@@ -119,29 +118,26 @@ def inject_custom_css():
         h1, h2, h3 {{ color: {CONFIG['COLORS']['GOLD']} !important; text-align: center; }}
         p, label {{ color: white !important; }}
 
-        /* --- CORREÇÃO DE BOTÕES (CSS HARDCORE) --- */
+        /* --- CORREÇÃO DE ALINHAMENTO DO BOTÃO --- */
         
-        /* O container do botão no Streamlit */
-        div.stButton {{
-            display: flex;
-            justify-content: center; /* Centraliza o flex container */
-            margin-top: 10px;
-            margin-bottom: 10px;
+        /* 1. O Container (A caixa invisível onde o botão mora) */
+        .stButton {{
+            width: 100% !important;        /* Força ocupar a tela toda */
+            display: flex !important;      /* Ativa o modo Flexbox */
+            justify-content: center !important; /* Manda o conteúdo (botão) para o MEIO */
+            margin-top: 10px !important;
         }}
 
-        /* O botão em si */
-        div.stButton > button {{
-            /* Tamanho fixo e igual para todos */
-            width: 280px !important; 
-            max-width: 90vw !important; /* Segurança para telas muito pequenas */
+        /* 2. O Botão (A parte colorida clicável) */
+        .stButton > button {{
+            width: 280px !important;         /* Largura Fixa */
+            max-width: 90vw !important;      /* Segurança mobile */
             height: 60px !important;
             
-            /* Centralização do bloco via margem (funciona mesmo sem flex) */
-            margin-left: auto !important;
+            /* Backup de centralização (margens automáticas) */
+            margin-left: auto !important;    
             margin-right: auto !important;
-            display: block !important;
             
-            /* Estilo */
             background-color: {CONFIG['COLORS']['GOLD']} !important;
             color: #00202f !important;
             border: none !important;
@@ -152,13 +148,13 @@ def inject_custom_css():
         }}
         
         /* Centralizar texto dentro do botão */
-        div.stButton > button p {{
+        .stButton > button p {{
             width: 100%;
             text-align: center;
         }}
 
         /* Hover */
-        div.stButton > button:hover {{
+        .stButton > button:hover {{
             background-color: #b38b52 !important;
             transform: scale(1.02);
             transition: 0.2s;
@@ -207,12 +203,15 @@ def view_login_screen():
         st.markdown("<h3>Seja bem-vindo(a)</h3>", unsafe_allow_html=True)
         st.markdown("<p style='text-align: center; opacity: 0.8; margin-bottom: 30px;'>Selecione seu perfil de acesso</p>", unsafe_allow_html=True)
         
-        # REMOVIDO ST.COLUMNS: Isso causava o bug no mobile.
-        # Agora confiamos 100% no CSS 'margin: auto' definido acima.
+        # REMOVIDO st.columns
+        # O CSS .stButton { justify-content: center } fará o trabalho pesado agora.
         
         if st.button("SOU CLIENTE"):
             st.session_state['tipo_acesso'] = 'cliente'
             st.rerun()
+        
+        # Espacinho extra visual (opcional)
+        st.write("") 
         
         if st.button("SOU ADVOGADO"):
             st.session_state['tipo_acesso'] = 'interno'
@@ -222,7 +221,6 @@ def view_login_screen():
 
     # Tela Cliente
     if st.session_state['tipo_acesso'] == 'cliente':
-        # Botão voltar (o CSS já vai centralizar ele também)
         if st.button("⬅ VOLTAR"):
             del st.session_state['tipo_acesso']
             st.rerun()
@@ -236,13 +234,15 @@ def view_login_screen():
         
         st.markdown("<h3 style='margin-top:20px;'>Login Corporativo</h3>", unsafe_allow_html=True)
         
-        # Formulário levemente mais estreito visualmente
+        # Formulário
         c1, c2, c3 = st.columns([0.1, 0.8, 0.1])
         with c2:
             with st.form("login_form"):
                 user = st.text_input("Usuário")
                 password = st.text_input("Senha", type="password")
                 st.write("")
+                
+                # O botão de entrar também vai respeitar o CSS centralizado
                 if st.form_submit_button("ENTRAR"):
                     hashed_pw = Utils.hash_password(password)
                     user_data = db.fetch_one("SELECT nome, funcao FROM usuarios WHERE username = ? AND senha = ?", (user, hashed_pw))
