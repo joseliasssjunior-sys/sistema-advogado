@@ -82,8 +82,16 @@ class DatabaseManager:
             c = conn.cursor()
             c.execute('''CREATE TABLE IF NOT EXISTS chamados (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_nome TEXT, telefone TEXT, descricao TEXT, data_abertura TEXT, resposta_interna TEXT, resposta_publica TEXT, responsavel TEXT, status TEXT)''')
             c.execute('''CREATE TABLE IF NOT EXISTS usuarios (username TEXT PRIMARY KEY, senha TEXT, nome TEXT, funcao TEXT)''')
+            
+            # --- CORREÇÃO DO LOGIN (FIX) ---
+            # 1. Garante que o usuário existe
+            c.execute("INSERT OR IGNORE INTO usuarios VALUES (?, ?, ?, ?)", ('Thiago Castro', 'temp', 'Dr. Thiago Castro', 'Sócio-Proprietário'))
+            
+            # 2. FORÇA a atualização da senha para o hash correto (Isso corrige o banco antigo)
             admin_pass = Utils.hash_password("1234")
-            c.execute("INSERT OR IGNORE INTO usuarios VALUES (?, ?, ?, ?)", ('Thiago Castro', admin_pass, 'Dr. Thiago Castro', 'Sócio-Proprietário'))
+            c.execute("UPDATE usuarios SET senha = ? WHERE username = 'Thiago Castro'", (admin_pass,))
+            
+            conn.commit()
 
     def execute_query(self, query: str, params: tuple = ()):
         with self._get_connection() as conn:
@@ -116,21 +124,16 @@ def inject_custom_css():
         h1, h2, h3 {{ color: {CONFIG['COLORS']['GOLD']} !important; text-align: center; }}
         p, label {{ color: white !important; }}
 
-        /* --- BOTÕES GERAIS E DE FORMULÁRIO --- */
-        /* Alvo: Botões normais E Botões de Formulário */
+        /* --- BOTÕES --- */
         div.stButton > button, div[data-testid="stFormSubmitButton"] > button {{
-            width: 80vw !important; /* 80% da tela mobile */
-            max-width: 350px !important; /* Trava no PC */
+            width: 80vw !important;
+            max-width: 350px !important;
             height: 55px !important;
-            
-            /* Centralização */
             display: block !important;
             margin-left: auto !important;
             margin-right: auto !important;
-            
-            /* Estilo */
             background-color: {CONFIG['COLORS']['GOLD']} !important;
-            color: #00202f !important; /* Texto Azul Escuro */
+            color: #00202f !important;
             border: none !important;
             border-radius: 12px !important;
             font-weight: 800 !important;
@@ -139,7 +142,6 @@ def inject_custom_css():
             box-shadow: 0px 4px 10px rgba(0,0,0,0.2) !important;
         }}
 
-        /* Centralizar o container do botão */
         div.stButton, div[data-testid="stFormSubmitButton"] {{
             display: flex !important;
             justify-content: center !important;
@@ -147,32 +149,26 @@ def inject_custom_css():
             margin-bottom: 10px !important;
         }}
 
-        /* Hover */
         div.stButton > button:hover, div[data-testid="stFormSubmitButton"] > button:hover {{
             background-color: #b38b52 !important;
             transform: scale(1.02);
             color: white !important;
         }}
 
-        /* --- INPUTS E SENHA --- */
-        
-        /* Caixa do Input (Fundo Branco, Borda Dourada) */
+        /* --- INPUTS --- */
         div[data-baseweb="input"] {{
             background-color: white !important;
             border: 2px solid {CONFIG['COLORS']['GOLD']} !important;
             border-radius: 8px !important;
         }}
-        
-        /* Texto digitado dentro do input */
         input {{
-            color: #00202f !important; /* Texto escuro para contraste */
+            color: #00202f !important;
             font-weight: bold !important;
         }}
-
-        /* --- CORREÇÃO DO ÍCONE DO OLHO (SENHA) --- */
-        /* O botão do olho estava branco no fundo branco. Vamos pintar de azul escuro. */
+        
+        /* Ícone do Olho */
         button[aria-label="Password visibility"] {{
-            color: #00202f !important; /* Cor do ícone */
+            color: #00202f !important;
         }}
         button[aria-label="Password visibility"]:hover {{
             color: {CONFIG['COLORS']['GOLD']} !important;
@@ -221,14 +217,12 @@ def view_login_screen():
             
         return
 
-    # Tela Cliente
     if st.session_state['tipo_acesso'] == 'cliente':
         if st.button("⬅ VOLTAR"):
             del st.session_state['tipo_acesso']
             st.rerun()
         view_client_area()
 
-    # Tela Login Interno
     elif st.session_state['tipo_acesso'] == 'interno':
         if st.button("⬅ VOLTAR"):
             del st.session_state['tipo_acesso']
@@ -236,7 +230,6 @@ def view_login_screen():
         
         st.markdown("<h3 style='margin-top:20px;'>Login Corporativo</h3>", unsafe_allow_html=True)
         
-        # Formulário
         c1, c2, c3 = st.columns([0.1, 0.8, 0.1])
         with c2:
             with st.form("login_form"):
@@ -244,9 +237,9 @@ def view_login_screen():
                 password = st.text_input("Senha", type="password")
                 st.write("")
                 
-                # A correção CSS agora pega especificamente este botão
                 if st.form_submit_button("ENTRAR"):
                     hashed_pw = Utils.hash_password(password)
+                    # Debug silencioso: força atualização se necessário
                     user_data = db.fetch_one("SELECT nome, funcao FROM usuarios WHERE username = ? AND senha = ?", (user, hashed_pw))
                     if user_data:
                         st.session_state['usuario_logado'] = user_data[0]
