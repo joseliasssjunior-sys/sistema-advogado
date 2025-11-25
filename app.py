@@ -5,494 +5,458 @@ from datetime import datetime
 from PIL import Image
 import time
 import os
+import hashlib
+from pathlib import Path
 
-# --- 1. CONFIGURAÇÕES GERAIS ---
-NOME_ESCRITORIO = "Thiago Castro Advogados"
-TITULO_ABA = "Portal | Thiago Castro Advogados"
-
-# Cores
-COR_DOURADO = "#Cea065"
-COR_FUNDO = "#00202f"
-COR_SIDEBAR = "#00202f"
+# --- 1. CONFIGURAÇÕES E CONSTANTES ---
+CONFIG = {
+    "APP_NAME": "Thiago Castro Advogados",
+    "PAGE_TITLE": "Portal | Thiago Castro Advogados",
+    "DB_NAME": "dados_escritorio.db",
+    "UPLOAD_DIR": "arquivos_processos",
+    "COLORS": {
+        "GOLD": "#Cea065",
+        "BG": "#00202f",
+        "SIDEBAR": "#00202f"
+    }
+}
 
 st.set_page_config(
-    page_title=TITULO_ABA, 
-    page_icon="⚖️", 
-    layout="wide", 
+    page_title=CONFIG["PAGE_TITLE"],
+    page_icon="⚖️",
+    layout="wide",
     initial_sidebar_state="auto"
 )
 
-# --- 2. FUNÇÕES DE ARQUIVOS ---
-def salvar_arquivos(uploaded_files, id_protocolo, quem_enviou):
-    if not uploaded_files:
-        return
-    pasta_destino = f"arquivos_processos/{id_protocolo}/{quem_enviou}"
-    os.makedirs(pasta_destino, exist_ok=True)
-    for uploaded_file in uploaded_files:
-        caminho_completo = os.path.join(pasta_destino, uploaded_file.name)
-        with open(caminho_completo, "wb") as f:
-            f.write(uploaded_file.getbuffer())
+# --- 2. GERENCIADORES (SERVICES/DAOs) ---
 
-def listar_arquivos_download(id_protocolo, quem_enviou):
-    pasta = f"arquivos_processos/{id_protocolo}/{quem_enviou}"
-    if os.path.exists(pasta):
-        arquivos = os.listdir(pasta)
-        if arquivos:
-            st.markdown(f"📂 **Anexos ({quem_enviou}):**")
-            for arq in arquivos:
-                caminho = os.path.join(pasta, arq)
-                with open(caminho, "rb") as f:
-                    st.download_button(f"⬇️ Baixar {arq}", f, file_name=arq)
+class Utils:
+    """Utilitários gerais e de segurança."""
+    
+    @staticmethod
+    def sanitize_filename(filename: str) -> str:
+        """Remove caminhos relativos para evitar ataques."""
+        return os.path.basename(filename)
+
+    @staticmethod
+    def hash_password(password: str) -> str:
+        """Hash simples para demonstração."""
+        return hashlib.sha256(password.encode()).hexdigest()
+
+class FileManager:
+    """Responsável pela manipulação segura de arquivos."""
+    
+    @staticmethod
+    def save_files(uploaded_files, protocol_id: int, uploader_type: str):
+        if not uploaded_files:
+            return
+            
+        # Cria estrutura: arquivos_processos/123/cliente/
+        base_path = Path(CONFIG["UPLOAD_DIR"]) / str(protocol_id) / uploader_type
+        base_path.mkdir(parents=True, exist_ok=True)
+        
+        for file in uploaded_files:
+            safe_name = Utils.sanitize_filename(file.name)
+            file_path = base_path / safe_name
+            with open(file_path, "wb") as f:
+                f.write(file.getbuffer())
+
+    @staticmethod
+    def list_files(protocol_id: int, uploader_type: str):
+        base_path = Path(CONFIG["UPLOAD_DIR"]) / str(protocol_id) / uploader_type
+        if base_path.exists() and any(base_path.iterdir()):
+            st.markdown(f"📂 **Anexos ({uploader_type}):**")
+            for file_path in base_path.iterdir():
+                if file_path.is_file():
+                    with open(file_path, "rb") as f:
+                        st.download_button(
+                            f"⬇️ Baixar {file_path.name}", 
+                            f, 
+                            file_name=file_path.name,
+                            key=f"dl_{protocol_id}_{uploader_type}_{file_path.name}"
+                        )
         else:
-            st.caption(f"Sem anexos de {quem_enviou}.")
+            st.caption(f"Sem anexos de {uploader_type}.")
 
-# --- 3. CSS "DUPLA SEGURANÇA" (CENTRALIZAÇÃO) ---
-def configurar_estilo_visual():
+class DatabaseManager:
+    """Gerencia conexões e queries de forma segura."""
+    
+    def __init__(self, db_name: str):
+        self.db_name = db_name
+        self._init_tables()
+
+    def _get_connection(self):
+        return sqlite3.connect(self.db_name)
+
+    def _init_tables(self):
+        """Inicializa esquema do banco."""
+        with self._get_connection() as conn:
+            c = conn.cursor()
+            c.execute('''
+                CREATE TABLE IF NOT EXISTS chamados (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    cliente_nome TEXT, telefone TEXT, descricao TEXT,
+                    data_abertura TEXT, resposta_interna TEXT,
+                    resposta_publica TEXT, responsavel TEXT, status TEXT
+                )
+            ''')
+            c.execute('''
+                CREATE TABLE IF NOT EXISTS usuarios (
+                    username TEXT PRIMARY KEY, senha TEXT, nome TEXT, funcao TEXT
+                )
+            ''')
+            # Usuário Admin Padrão (Senha: 1234)
+            admin_pass = Utils.hash_password("1234")
+            c.execute("INSERT OR IGNORE INTO usuarios VALUES (?, ?, ?, ?)", 
+                      ('Thiago Castro', admin_pass, 'Dr. Thiago Castro', 'Sócio-Proprietário'))
+
+    def execute_query(self, query: str, params: tuple = ()):
+        """Executa comandos de modificação (INSERT, UPDATE, DELETE)."""
+        with self._get_connection() as conn:
+            c = conn.cursor()
+            c.execute(query, params)
+            return c.lastrowid
+
+    def fetch_data(self, query: str, params: tuple = ()) -> pd.DataFrame:
+        """Executa comandos de leitura e retorna DataFrame."""
+        with self._get_connection() as conn:
+            return pd.read_sql_query(query, conn, params=params)
+
+    def fetch_one(self, query: str, params: tuple = ()):
+        with self._get_connection() as conn:
+            c = conn.cursor()
+            c.execute(query, params)
+            return c.fetchone()
+
+# Instância global do DB
+db = DatabaseManager(CONFIG["DB_NAME"])
+
+# --- 3. CSS E ESTILIZAÇÃO VISUAL ---
+
+def inject_custom_css():
     st.markdown(f"""
         <style>
-        :root {{ --primary-color: {COR_DOURADO}; }}
-        header {{ visibility: hidden; }}
+        /* Variáveis */
+        :root {{ --primary-color: {CONFIG['COLORS']['GOLD']}; }}
         
-        /* Fundo Geral */
-        [data-testid="stAppViewContainer"] {{ background-color: {COR_FUNDO}; color: white; }}
-        [data-testid="stSidebar"] {{ background-color: {COR_SIDEBAR}; border-right: 1px solid {COR_DOURADO}; }}
-        
-        /* Textos */
-        h1, h2, h3 {{ color: {COR_DOURADO} !important; text-align: center; }}
-        p, label, .stMarkdown {{ color: white !important; }}
+        /* Layout Base */
+        [data-testid="stAppViewContainer"] {{ background-color: {CONFIG['COLORS']['BG']}; color: white; }}
+        [data-testid="stSidebar"] {{ background-color: {CONFIG['COLORS']['SIDEBAR']}; border-right: 1px solid {CONFIG['COLORS']['GOLD']}; }}
         
         /* Centralizar Logo */
         [data-testid="stImage"] {{
             display: flex;
             justify-content: center;
             align-items: center;
+            width: 100%;
             margin-bottom: 20px;
         }}
         [data-testid="stImage"] > img {{
-            margin: 0 auto; /* Garante que a imagem fique no meio */
+            object-fit: contain;
+            max-width: 250px;
         }}
-        
-        /* --- O TRUQUE DA CENTRALIZAÇÃO DUPLA --- */
-        
-        /* 1. A Caixa "Pai" do Botão */
-        div.stButton {{
-            display: flex !important;
-            justify-content: center !important; /* Alinha o conteúdo ao centro */
-            width: 100% !important;
-        }}
-        
-        /* 2. O Botão em si */
-        button[kind="primary"] {{
-            background-color: {COR_DOURADO} !important;
-            border: none !important;
-            color: black !important;
-            font-weight: bold !important;
-            border-radius: 8px !important;
-            font-size: 18px !important;
-            
-            /* Tamanho */
-            width: 80% !important;
-            max-width: 300px !important;
-            height: 60px !important;
-            
-            /* Centralização Extra (Segurança) */
-            margin-left: auto !important;
-            margin-right: auto !important;
-            display: block !important;
-        }}
-        
-        /* Texto dentro do botão */
-        button[kind="primary"] p {{
-            color: black !important; 
-            font-size: 18px !important;
-            text-align: center !important;
-            width: 100%;
-        }}
-        
-        /* Botão Secundário (Voltar) */
-        button[kind="secondary"] {{
-            background-color: transparent !important;
-            border: 2px solid {COR_DOURADO} !important;
-            color: {COR_DOURADO} !important;
-            width: 80% !important;
-            max-width: 300px !important;
-            padding: 10px !important;
-            border-radius: 8px !important;
-            
-            margin-left: auto !important;
-            margin-right: auto !important;
-            display: block !important;
-            margin-top: 10px !important;
-        }}
-        button[kind="secondary"] p {{ color: {COR_DOURADO} !important; font-weight: bold !important; }}
-        
-        /* Hover */
-        button[kind="primary"]:hover {{ background-color: #b38b52 !important; }}
-        button[kind="secondary"]:hover {{ border-color: white !important; color: white !important; }}
 
-        /* --- INPUTS --- */
+        /* PADRONIZAÇÃO DOS BOTÕES */
+        div.stButton {{
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }}
+        
+        /* Botão Padrão */
+        div.stButton > button {{
+            width: 100% !important;
+            max-width: 350px !important; /* Limite para Desktop */
+            height: 60px !important;
+            background-color: {CONFIG['COLORS']['GOLD']} !important;
+            color: #00202f !important;
+            font-weight: 800 !important;
+            font-size: 18px !important;
+            border-radius: 12px !important;
+            border: none !important;
+        }}
+        div.stButton > button:hover {{
+            background-color: #b38b52 !important;
+            transform: scale(1.02);
+            transition: all 0.2s ease-in-out;
+        }}
+
+        /* Botão Secundário (Estilo Outline) */
+        button[kind="secondary"] {{
+            background: transparent !important;
+            border: 2px solid {CONFIG['COLORS']['GOLD']} !important;
+            color: {CONFIG['COLORS']['GOLD']} !important;
+        }}
+        button[kind="secondary"]:hover {{
+            border-color: white !important;
+            color: white !important;
+        }}
+        
+        /* Inputs e Textos */
+        h1, h2, h3 {{ color: {CONFIG['COLORS']['GOLD']} !important; text-align: center; }}
+        p, label {{ color: white !important; }}
         div[data-baseweb="input"], div[data-baseweb="base-input"], div[data-baseweb="select"] > div {{
             background-color: white !important;
-            border: 2px solid {COR_DOURADO} !important;
+            border: 2px solid {CONFIG['COLORS']['GOLD']} !important;
             border-radius: 8px !important;
         }}
-        input {{ color: black !important; }}
-        button[aria-label="Password visibility"] {{ color: {COR_FUNDO} !important; }}
-        
-        /* Resto */
-        .stTabs [data-baseweb="tab-highlight"] {{ background-color: {COR_DOURADO} !important; }}
-        .block-container {{ padding-top: 3rem; }}
+        input, textarea {{ color: black !important; }}
         </style>
     """, unsafe_allow_html=True)
 
-configurar_estilo_visual()
-
-# --- 4. BANCO DE DADOS ---
-def init_db():
-    conn = sqlite3.connect('dados_escritorio.db')
-    c = conn.cursor()
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS chamados (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            cliente_nome TEXT,
-            telefone TEXT,
-            descricao TEXT,
-            data_abertura TEXT,
-            resposta_interna TEXT,
-            resposta_publica TEXT,
-            responsavel TEXT,
-            status TEXT
-        )
-    ''')
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS usuarios (
-            username TEXT PRIMARY KEY,
-            senha TEXT,
-            nome TEXT,
-            funcao TEXT
-        )
-    ''')
-    c.execute("SELECT * FROM usuarios WHERE username = 'Thiago Castro'")
-    if not c.fetchone():
-        c.execute("INSERT INTO usuarios VALUES ('Thiago Castro', '1234', 'Dr. Thiago Castro', 'Sócio-Proprietário')")
-    conn.commit()
-    conn.close()
-
-init_db()
-
-# --- 5. VARIÁVEIS E SIDEBAR ---
-if 'usuario_logado' not in st.session_state:
-    st.session_state['usuario_logado'] = None
-if 'funcao_usuario' not in st.session_state:
-    st.session_state['funcao_usuario'] = None
-if 'tipo_acesso' not in st.session_state:
-    st.session_state['tipo_acesso'] = None
-
-def sidebar_logada():
+def render_sidebar():
     with st.sidebar:
         try:
-            logo = Image.open("logo.png")
-            st.image(logo, use_container_width=True)
+            st.image("logo.png", use_container_width=True)
         except:
-            st.markdown(f"## {NOME_ESCRITORIO}")
+            st.markdown(f"## {CONFIG['APP_NAME']}")
         
+        if st.session_state.get('usuario_logado'):
+            st.info(f"Logado: {st.session_state['usuario_logado']}\nCargo: {st.session_state['funcao_usuario']}")
+            if st.button("SAIR"):
+                st.session_state.clear()
+                st.rerun()
+
+# --- 4. TELAS (VIEWS) ---
+
+def view_login_screen():
+    # 1. Logo (Centralização via CSS)
+    try:
+        st.image("logo.png")
+    except:
+        st.markdown(f"<h1>{CONFIG['APP_NAME']}</h1>", unsafe_allow_html=True)
+    
+    st.write("")
+    
+    if 'tipo_acesso' not in st.session_state:
+        st.markdown("<h3>Seja bem-vindo(a)</h3>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; opacity: 0.8;'>Selecione seu perfil de acesso</p>", unsafe_allow_html=True)
         st.write("")
-        if st.session_state['usuario_logado']:
-            cargo = st.session_state['funcao_usuario']
-            st.markdown(f"""
-                <div style="padding: 15px; border: 1px solid {COR_DOURADO}; border-radius: 5px; text-align: center; margin-bottom: 20px; background-color: #00161F;">
-                    <small style="color: #ccc;">Logado como</small><br>
-                    <strong style="color: white; font-size: 16px;">{st.session_state['usuario_logado']}</strong><br>
-                    <span style="color: {COR_DOURADO}; font-size: 12px; text-transform: uppercase;">{cargo}</span>
-                </div>
-            """, unsafe_allow_html=True)
-            if st.button("SAIR / LOGOUT"):
-                st.session_state['usuario_logado'] = None
-                st.session_state['funcao_usuario'] = None
-                st.session_state['tipo_acesso'] = None
+        
+        # Centralização dos Botões via Colunas
+        col_esq, col_meio, col_dir = st.columns([0.1, 0.8, 0.1])
+        with col_meio:
+            if st.button("Sou Cliente"):
+                st.session_state['tipo_acesso'] = 'cliente'
                 st.rerun()
-
-# --- 6. LÓGICA DO SISTEMA ---
-
-# Header
-try:
-    logo = Image.open("logo.png")
-    st.image(logo, width=240)
-except:
-    st.title(NOME_ESCRITORIO)
-st.write("")
-
-# === SE NÃO ESTIVER LOGADO ===
-if st.session_state['usuario_logado'] is None:
-    
-    # TELA 0: PÁGINA INICIAL (LANDING PAGE)
-    if st.session_state['tipo_acesso'] is None:
-        
-        st.markdown(f"<h1 style='margin-bottom: 0px;'>Seja bem-vindo(a)</h1>", unsafe_allow_html=True)
-        st.markdown("<h3 style='text-align: center; color: white; margin-top: 5px; margin-bottom: 40px; font-weight: normal; font-size: 18px;'>Selecione seu perfil de acesso</h3>", unsafe_allow_html=True)
-        
-        # BOTÕES (Agora com centralização dupla no CSS)
-        if st.button("Sou Cliente", type="primary"):
-            st.session_state['tipo_acesso'] = 'cliente'
-            st.rerun()
-        
-        st.write("") 
-        
-        if st.button("Sou Advogado", type="primary"):
-            st.session_state['tipo_acesso'] = 'interno'
-            st.rerun()
-
-    # TELA 1: ÁREA DO CLIENTE
-    elif st.session_state['tipo_acesso'] == 'cliente':
-        # Botão voltar com estilo secundário
-        if st.button("⬅ VOLTAR", type="secondary"):
-            st.session_state['tipo_acesso'] = None
-            st.rerun()
             
-        st.info("Bem-vindo ao canal oficial de atendimento.")
-        
-        aba1, aba2 = st.tabs(["📝 NOVO PEDIDO", "🔍 CONSULTAR"])
-        
-        with aba1:
-            with st.form("form_cliente", clear_on_submit=True):
-                nome = st.text_input("Nome Completo")
-                tel = st.text_input("WhatsApp")
-                desc = st.text_area("Descrição do Caso")
-                arquivos = st.file_uploader("Anexar Documentos", accept_multiple_files=True)
-                
-                if st.form_submit_button("ENVIAR SOLICITAÇÃO"):
-                    if nome and desc:
-                        conn = sqlite3.connect('dados_escritorio.db')
-                        c = conn.cursor()
-                        hoje = datetime.now().strftime("%d/%m/%Y")
-                        c.execute("INSERT INTO chamados (cliente_nome, telefone, descricao, data_abertura, resposta_publica, responsavel, status) VALUES (?, ?, ?, ?, ?, ?, ?)", 
-                                  (nome, tel, desc, hoje, "", "Sem Responsável", "Aberto"))
-                        conn.commit()
-                        id_gerado = c.lastrowid
-                        conn.close()
-                        if arquivos: salvar_arquivos(arquivos, id_gerado, "cliente")
-                        st.success(f"✅ Protocolo: #{id_gerado}")
-                        st.balloons()
-                    else:
-                        st.warning("Preencha os campos.")
-        
-        with aba2:
-            prot = st.number_input("Número do Protocolo", min_value=1, step=1)
-            if st.button("PESQUISAR", type="primary"):
-                conn = sqlite3.connect('dados_escritorio.db')
-                df = pd.read_sql_query(f"SELECT * FROM chamados WHERE id = {prot}", conn)
-                conn.close()
-                if not df.empty:
-                    status = df.iloc[0]['status']
-                    resp = df.iloc[0]['resposta_publica']
-                    st.markdown(f"**Status:** {status}")
-                    listar_arquivos_download(prot, "cliente")
-                    st.divider()
-                    if resp:
-                        st.markdown(f"<div style='background-color:#00161F; padding:15px; border:1px solid {COR_DOURADO}; border-radius:5px;'>{resp}</div>", unsafe_allow_html=True)
-                        listar_arquivos_download(prot, "advogado")
-                    else:
-                        st.info("⏳ Aguardando parecer.")
-                else:
-                    st.error("Não encontrado.")
+            st.write("") # Espaço entre botões
+            
+            if st.button("Sou Advogado"):
+                st.session_state['tipo_acesso'] = 'interno'
+                st.rerun()
+        return
 
-    # TELA 2: LOGIN DA EQUIPE
+    # Tela Cliente
+    if st.session_state['tipo_acesso'] == 'cliente':
+        col_esq, col_meio, col_dir = st.columns([0.1, 0.8, 0.1])
+        with col_meio:
+            if st.button("⬅ Voltar", type="secondary"):
+                del st.session_state['tipo_acesso']
+                st.rerun()
+        view_client_area()
+
+    # Tela Login Interno
     elif st.session_state['tipo_acesso'] == 'interno':
-        if st.button("⬅ VOLTAR", type="secondary"):
-            st.session_state['tipo_acesso'] = None
-            st.rerun()
-
-        st.markdown("<h4 style='text-align: center; color: white; margin-top: 20px;'>Login Corporativo</h4>", unsafe_allow_html=True)
-        
-        # Centralizando Login (Sem colunas, CSS cuida)
-        user = st.text_input("Login")
-        senha = st.text_input("Senha", type="password")
-        if st.button("ENTRAR", type="primary"):
-            conn = sqlite3.connect('dados_escritorio.db')
-            c = conn.cursor()
-            c.execute("SELECT nome, funcao FROM usuarios WHERE username = ? AND senha = ?", (user, senha))
-            res = c.fetchone()
-            conn.close()
-            if res:
-                st.session_state['usuario_logado'] = res[0]
-                st.session_state['funcao_usuario'] = res[1]
+        col_esq, col_meio, col_dir = st.columns([0.1, 0.8, 0.1])
+        with col_meio:
+            if st.button("⬅ Voltar", type="secondary"):
+                del st.session_state['tipo_acesso']
                 st.rerun()
-            else:
-                st.error("Acesso negado.")
-
-# === MODO LOGADO ===
-else:
-    sidebar_logada()
-    cargo_atual = st.session_state['funcao_usuario']
-    
-    if cargo_atual == 'Sócio-Proprietário':
-        st.title("Painel do Sócio")
-        abas_admin = st.tabs(["📊 Visão", "📌 Triagem", "✅ Validar", "👥 Equipe"])
         
-        with abas_admin[0]: # Visão
-            conn = sqlite3.connect('dados_escritorio.db')
-            df_geral = pd.read_sql_query("SELECT id, cliente_nome, status, responsavel FROM chamados", conn)
-            conn.close()
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric("Total", len(df_geral))
-            c2.metric("Abertos", len(df_geral[df_geral['status']=='Aberto']))
-            c3.metric("Análise", len(df_geral[df_geral['status']=='Em Análise']))
-            c4.metric("Final", len(df_geral[df_geral['status']=='Concluído']))
-            st.dataframe(df_geral, use_container_width=True, hide_index=True)
-
-        with abas_admin[1]: # Triagem
-            conn = sqlite3.connect('dados_escritorio.db')
-            df_abertos = pd.read_sql_query("SELECT id, cliente_nome, descricao FROM chamados WHERE status='Aberto'", conn)
-            df_equipe = pd.read_sql_query("SELECT nome FROM usuarios WHERE funcao != 'Sócio-Proprietário'", conn)
-            lista_equipe = df_equipe['nome'].tolist()
-            conn.close()
-            
-            if not df_abertos.empty:
-                for index, row in df_abertos.iterrows():
-                    with st.expander(f"Caso #{row['id']} - {row['cliente_nome']}", expanded=True):
-                        st.info(row['descricao'])
-                        listar_arquivos_download(row['id'], "cliente")
-                        st.markdown("---")
-                        col_acao, col_detalhe = st.columns([1, 2])
-                        opcao = col_acao.radio(f"Ação #{row['id']}:", ["Delegar", "Responder Agora"], key=f"rd_{row['id']}")
-                        
-                        if opcao == "Delegar":
-                            if not lista_equipe:
-                                st.warning("Cadastre sua equipe.")
-                            else:
-                                func_sel = col_detalhe.selectbox("Para:", lista_equipe, key=f"sel_{row['id']}")
-                                if col_detalhe.button(f"Confirmar #{row['id']}"):
-                                    conn = sqlite3.connect('dados_escritorio.db')
-                                    c = conn.cursor()
-                                    c.execute("UPDATE chamados SET responsavel = ?, status = 'Em Análise' WHERE id = ?", (func_sel, row['id']))
-                                    conn.commit()
-                                    conn.close()
-                                    st.success("Delegado!")
-                                    time.sleep(1)
-                                    st.rerun()
-                        else:
-                            resp_direta = col_detalhe.text_area("Resposta:", key=f"txt_{row['id']}")
-                            arq_socio = col_detalhe.file_uploader("Anexar", key=f"up_{row['id']}", accept_multiple_files=True)
-                            if col_detalhe.button(f"Finalizar #{row['id']}"):
-                                conn = sqlite3.connect('dados_escritorio.db')
-                                c = conn.cursor()
-                                c.execute("UPDATE chamados SET resposta_publica = ?, status = 'Concluído', responsavel = 'Sócio-Proprietário' WHERE id = ?", (resp_direta, row['id']))
-                                conn.commit()
-                                conn.close()
-                                if arq_socio: salvar_arquivos(arq_socio, row['id'], "advogado")
-                                st.success("Respondido!")
-                                time.sleep(1)
-                                st.rerun()
-            else:
-                st.success("Fila zerada.")
-
-        with abas_admin[2]: # Validar
-            conn = sqlite3.connect('dados_escritorio.db')
-            df_rev = pd.read_sql_query("SELECT * FROM chamados WHERE status='Pendente Aprovação'", conn)
-            conn.close()
-            if not df_rev.empty:
-                for index, row in df_rev.iterrows():
-                    with st.expander(f"Caso #{row['id']} - Resp: {row['responsavel']}", expanded=True):
-                        st.write(f"**Descrição:** {row['descricao']}")
-                        listar_arquivos_download(row['id'], "cliente")
-                        st.info(f"**Minuta:**\n{row['resposta_interna']}")
-                        listar_arquivos_download(row['id'], "advogado")
-                        resposta_final = st.text_area("Texto Final", value=row['resposta_interna'], key=f"edit_{row['id']}")
-                        if st.button(f"APROVAR #{row['id']}"):
-                            conn = sqlite3.connect('dados_escritorio.db')
-                            c = conn.cursor()
-                            c.execute("UPDATE chamados SET resposta_publica = ?, status = 'Concluído' WHERE id = ?", (resposta_final, row['id']))
-                            conn.commit()
-                            conn.close()
-                            st.success("Enviado!")
-                            time.sleep(1)
-                            st.rerun()
-            else:
-                st.info("Nada para validar.")
-
-        with abas_admin[3]: # Equipe
-            col_cad, col_manut = st.columns(2)
-            with col_cad:
-                st.subheader("Novo Membro")
-                with st.form("novo_user"):
-                    u_nome = st.text_input("Nome")
-                    u_login = st.text_input("Login")
-                    u_senha = st.text_input("Senha", type="password")
-                    u_tipo = st.selectbox("Cargo", ["Advogado", "Estagiário", "Sócio-Proprietário"])
-                    if st.form_submit_button("CADASTRAR"):
-                        conn = sqlite3.connect('dados_escritorio.db')
-                        c = conn.cursor()
-                        try:
-                            c.execute("INSERT INTO usuarios VALUES (?, ?, ?, ?)", (u_login, u_senha, u_nome, u_tipo))
-                            conn.commit()
-                            st.success("Cadastrado!")
-                        except:
-                            st.error("Login já existe.")
-                        conn.close()
-            
-            with col_manut:
-                st.subheader("Manutenção")
-                conn = sqlite3.connect('dados_escritorio.db')
-                df_users = pd.read_sql_query("SELECT username, nome, funcao FROM usuarios", conn)
-                conn.close()
-                
-                with st.expander("🔑 Alterar Senha"):
-                    user_reset = st.selectbox("Usuário", df_users['username'])
-                    pass_reset = st.text_input("Nova Senha", type="password")
-                    if st.button("ATUALIZAR"):
-                        conn = sqlite3.connect('dados_escritorio.db')
-                        c = conn.cursor()
-                        c.execute("UPDATE usuarios SET senha = ? WHERE username = ?", (pass_reset, user_reset))
-                        conn.commit()
-                        conn.close()
-                        st.success("Senha alterada!")
-
+        st.markdown("<h3 style='margin-top:20px;'>Login Corporativo</h3>", unsafe_allow_html=True)
+        
+        # Formulário Centralizado
+        c1, c2, c3 = st.columns([0.1, 0.8, 0.1])
+        with c2:
+            with st.form("login_form"):
+                user = st.text_input("Usuário")
+                password = st.text_input("Senha", type="password")
                 st.write("")
-                with st.expander("🗑️ Excluir"):
-                    df_delete = df_users[df_users['funcao'] != 'Sócio-Proprietário']
-                    if not df_delete.empty:
-                        user_delete = st.selectbox("Quem excluir?", df_delete['username'])
-                        if st.button("CONFIRMAR EXCLUSÃO", type="primary"):
-                            conn = sqlite3.connect('dados_escritorio.db')
-                            c = conn.cursor()
-                            c.execute("DELETE FROM usuarios WHERE username = ?", (user_delete,))
-                            conn.commit()
-                            conn.close()
-                            st.success("Removido!")
-                            time.sleep(1)
-                            st.rerun()
-            st.write("---")
-            st.dataframe(df_users[['nome', 'username', 'funcao']], hide_index=True, use_container_width=True)
-
-    # === PAINEL STAFF ===
-    else:
-        st.title(f"Minhas Tarefas | {st.session_state['usuario_logado']}")
-        conn = sqlite3.connect('dados_escritorio.db')
-        meus_casos = pd.read_sql_query(f"SELECT * FROM chamados WHERE responsavel = '{st.session_state['usuario_logado']}' AND status != 'Concluído'", conn)
-        conn.close()
-        
-        if not meus_casos.empty:
-            for index, row in meus_casos.iterrows():
-                with st.container(border=True):
-                    st.markdown(f"**Caso #{row['id']} - {row['cliente_nome']}**")
-                    st.info(row['descricao'])
-                    listar_arquivos_download(row['id'], "cliente")
+                if st.form_submit_button("Entrar"):
+                    hashed_pw = Utils.hash_password(password)
+                    user_data = db.fetch_one("SELECT nome, funcao FROM usuarios WHERE username = ? AND senha = ?", (user, hashed_pw))
                     
-                    if row['status'] == 'Pendente Aprovação':
-                        st.warning("⏳ Aguardando validação do Sócio.")
+                    if user_data:
+                        st.session_state['usuario_logado'] = user_data[0]
+                        st.session_state['funcao_usuario'] = user_data[1]
+                        st.rerun()
                     else:
-                        resposta = st.text_area("Elaborar Resposta:", key=f"staff_{row['id']}")
-                        arq_staff = st.file_uploader("Anexar", key=f"up_staff_{row['id']}", accept_multiple_files=True)
-                        
-                        if st.button(f"ENVIAR PARA VALIDAÇÃO #{row['id']}"):
-                            conn = sqlite3.connect('dados_escritorio.db')
-                            c = conn.cursor()
-                            c.execute("UPDATE chamados SET resposta_interna = ?, status = 'Pendente Aprovação' WHERE id = ?", (resposta, row['id']))
-                            conn.commit()
-                            conn.close()
-                            if arq_staff: salvar_arquivos(arq_staff, row['id'], "advogado")
-                            st.success("Enviado!")
-                            time.sleep(1)
-                            st.rerun()
-        else:
-            st.success("Sua fila de tarefas está vazia.")
+                        st.error("Credenciais inválidas.")
+
+def view_client_area():
+    st.write("")
+    tab1, tab2 = st.tabs(["Novo Pedido", "Consultar"])
+    
+    with tab1:
+        with st.form("new_request"):
+            nome = st.text_input("Nome Completo")
+            tel = st.text_input("WhatsApp")
+            desc = st.text_area("Descrição do Caso")
+            files = st.file_uploader("Anexar Documentos", accept_multiple_files=True)
+            st.write("")
+            if st.form_submit_button("Enviar Solicitação"):
+                if nome and desc:
+                    row_id = db.execute_query(
+                        "INSERT INTO chamados (cliente_nome, telefone, descricao, data_abertura, resposta_publica, responsavel, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                        (nome, tel, desc, datetime.now().strftime("%d/%m/%Y"), "", "Sem Responsável", "Aberto")
+                    )
+                    FileManager.save_files(files, row_id, "cliente")
+                    st.success(f"✅ Protocolo gerado: #{row_id}")
+                    st.balloons()
+                else:
+                    st.warning("Preencha o nome e a descrição.")
+    
+    with tab2:
+        prot = st.number_input("Número do Protocolo", min_value=1, step=1)
+        if st.button("Pesquisar"):
+            df = db.fetch_data("SELECT * FROM chamados WHERE id = ?", (prot,))
+            if not df.empty:
+                row = df.iloc[0]
+                st.markdown(f"**Status:** {row['status']}")
+                FileManager.list_files(prot, "cliente")
+                st.divider()
+                if row['resposta_publica']:
+                    st.markdown(f"<div style='background-color:#00161F; padding:15px; border:1px solid {CONFIG['COLORS']['GOLD']}; border-radius:5px;'>{row['resposta_publica']}</div>", unsafe_allow_html=True)
+                    FileManager.list_files(prot, "advogado")
+                else:
+                    st.info("⏳ Aguardando análise do escritório.")
+            else:
+                st.error("Protocolo não encontrado.")
+
+def view_admin_dashboard():
+    # Header Painel
+    st.markdown(f"<h3>Painel | {st.session_state['usuario_logado']}</h3>", unsafe_allow_html=True)
+    
+    if st.session_state['funcao_usuario'] == 'Sócio-Proprietário':
+        tabs = st.tabs(["📊 Visão", "📌 Triagem", "✅ Validar", "👥 Equipe"])
+        
+        with tabs[0]: # Dashboard
+            df = db.fetch_data("SELECT id, cliente_nome, status, responsavel FROM chamados")
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Total", len(df))
+            col2.metric("Pendentes", len(df[df['status']=='Aberto']))
+            col3.metric("Concluídos", len(df[df['status']=='Concluído']))
+            st.dataframe(df, use_container_width=True, hide_index=True)
+
+        with tabs[1]: # Triagem
+            _render_triagem()
+            
+        with tabs[2]: # Validação
+            _render_validacao()
+
+        with tabs[3]: # Equipe
+            _render_team_management()
+    else:
+        # Visão Advogado/Staff
+        _render_staff_tasks()
+
+# --- 5. COMPONENTES AUXILIARES (ADMIN) ---
+
+def _render_triagem():
+    df = db.fetch_data("SELECT * FROM chamados WHERE status='Aberto'")
+    staff_df = db.fetch_data("SELECT nome FROM usuarios WHERE funcao != 'Sócio-Proprietário'")
+    staff_list = staff_df['nome'].tolist()
+    
+    if df.empty:
+        st.success("Fila de triagem zerada.")
+        return
+
+    for _, row in df.iterrows():
+        with st.expander(f"Caso #{row['id']} - {row['cliente_nome']}", expanded=True):
+            st.info(row['descricao'])
+            FileManager.list_files(row['id'], "cliente")
+            st.divider()
+            
+            c1, c2 = st.columns(2)
+            with c1:
+                assignee = st.selectbox("Delegar para:", staff_list, key=f"sel_{row['id']}")
+                if st.button("Delegar", key=f"btn_del_{row['id']}"):
+                    db.execute_query("UPDATE chamados SET responsavel = ?, status = 'Em Análise' WHERE id = ?", (assignee, row['id']))
+                    st.rerun()
+            with c2:
+                resp = st.text_area("Resposta Direta (Sócio)", key=f"resp_{row['id']}")
+                files = st.file_uploader("Anexar", key=f"up_socio_{row['id']}", accept_multiple_files=True)
+                if st.button("Finalizar Caso", key=f"btn_fin_{row['id']}"):
+                    db.execute_query("UPDATE chamados SET resposta_publica = ?, status = 'Concluído', responsavel = 'Sócio-Proprietário' WHERE id = ?", (resp, row['id']))
+                    FileManager.save_files(files, row['id'], "advogado")
+                    st.rerun()
+
+def _render_validacao():
+    df = db.fetch_data("SELECT * FROM chamados WHERE status='Pendente Aprovação'")
+    if df.empty:
+        st.info("Nenhuma minuta aguardando validação.")
+        return
+        
+    for _, row in df.iterrows():
+        with st.expander(f"#{row['id']} (Resp: {row['responsavel']})", expanded=True):
+            st.markdown(f"**Cliente:** {row['descricao']}")
+            st.markdown(f"**Minuta Sugerida:**\n> {row['resposta_interna']}")
+            FileManager.list_files(row['id'], "advogado")
+            
+            new_text = st.text_area("Edição Final", value=row['resposta_interna'], key=f"val_{row['id']}")
+            
+            if st.button("Aprovar e Enviar ao Cliente", key=f"apr_{row['id']}"):
+                db.execute_query("UPDATE chamados SET resposta_publica = ?, status = 'Concluído' WHERE id = ?", (new_text, row['id']))
+                st.rerun()
+
+def _render_team_management():
+    c1, c2 = st.columns(2)
+    with c1:
+        st.subheader("Novo Membro")
+        with st.form("add_user"):
+            u = st.text_input("Login")
+            p = st.text_input("Senha", type="password")
+            n = st.text_input("Nome")
+            r = st.selectbox("Cargo", ["Advogado", "Estagiário"])
+            if st.form_submit_button("Cadastrar"):
+                try:
+                    hashed = Utils.hash_password(p)
+                    db.execute_query("INSERT INTO usuarios VALUES (?, ?, ?, ?)", (u, hashed, n, r))
+                    st.success("Usuário criado!")
+                except:
+                    st.error("Erro: Login já existe.")
+    
+    with c2:
+        st.subheader("Equipe Atual")
+        users = db.fetch_data("SELECT nome, username, funcao FROM usuarios")
+        st.dataframe(users, hide_index=True)
+
+def _render_staff_tasks():
+    user = st.session_state['usuario_logado']
+    df = db.fetch_data("SELECT * FROM chamados WHERE responsavel = ? AND status != 'Concluído'", (user,))
+    
+    st.subheader("Minhas Tarefas Pendentes")
+    if df.empty:
+        st.success("Você não tem tarefas pendentes.")
+        return
+
+    for _, row in df.iterrows():
+        with st.container(border=True):
+            st.markdown(f"**Caso #{row['id']}** - {row['cliente_nome']}")
+            st.write(row['descricao'])
+            FileManager.list_files(row['id'], "cliente")
+            
+            if row['status'] == 'Pendente Aprovação':
+                st.warning("⏳ Minuta enviada. Aguardando validação do Sócio.")
+            else:
+                resp = st.text_area("Minuta de Resposta", key=f"my_{row['id']}")
+                files = st.file_uploader("Anexos Internos", key=f"up_{row['id']}", accept_multiple_files=True)
+                if st.button("Enviar para Validação", key=f"snd_{row['id']}"):
+                    db.execute_query("UPDATE chamados SET resposta_interna = ?, status = 'Pendente Aprovação' WHERE id = ?", (resp, row['id']))
+                    FileManager.save_files(files, row['id'], "advogado")
+                    st.rerun()
+
+# --- 6. EXECUÇÃO PRINCIPAL ---
+
+def main():
+    inject_custom_css()
+    render_sidebar()
+    
+    if 'usuario_logado' not in st.session_state or not st.session_state['usuario_logado']:
+        view_login_screen()
+    else:
+        view_admin_dashboard()
+
+if __name__ == "__main__":
+    main()
