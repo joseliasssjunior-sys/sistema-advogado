@@ -83,14 +83,11 @@ class DatabaseManager:
             c.execute('''CREATE TABLE IF NOT EXISTS chamados (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_nome TEXT, telefone TEXT, descricao TEXT, data_abertura TEXT, resposta_interna TEXT, resposta_publica TEXT, responsavel TEXT, status TEXT)''')
             c.execute('''CREATE TABLE IF NOT EXISTS usuarios (username TEXT PRIMARY KEY, senha TEXT, nome TEXT, funcao TEXT)''')
             
-            # --- CORREÇÃO DO LOGIN (FIX) ---
-            # 1. Garante que o usuário existe
+            # --- GARANTIA DE ACESSO (Login Fix) ---
             c.execute("INSERT OR IGNORE INTO usuarios VALUES (?, ?, ?, ?)", ('Thiago Castro', 'temp', 'Dr. Thiago Castro', 'Sócio-Proprietário'))
-            
-            # 2. FORÇA a atualização da senha para o hash correto (Isso corrige o banco antigo)
+            # Atualiza senha do admin para garantir acesso
             admin_pass = Utils.hash_password("1234")
             c.execute("UPDATE usuarios SET senha = ? WHERE username = 'Thiago Castro'", (admin_pass,))
-            
             conn.commit()
 
     def execute_query(self, query: str, params: tuple = ()):
@@ -111,7 +108,7 @@ class DatabaseManager:
 
 db = DatabaseManager(CONFIG["DB_NAME"])
 
-# --- 3. CSS (Correções Visuais) ---
+# --- 3. CSS (VISUAL) ---
 
 def inject_custom_css():
     st.markdown(f"""
@@ -166,7 +163,6 @@ def inject_custom_css():
             font-weight: bold !important;
         }}
         
-        /* Ícone do Olho */
         button[aria-label="Password visibility"] {{
             color: #00202f !important;
         }}
@@ -239,7 +235,6 @@ def view_login_screen():
                 
                 if st.form_submit_button("ENTRAR"):
                     hashed_pw = Utils.hash_password(password)
-                    # Debug silencioso: força atualização se necessário
                     user_data = db.fetch_one("SELECT nome, funcao FROM usuarios WHERE username = ? AND senha = ?", (user, hashed_pw))
                     if user_data:
                         st.session_state['usuario_logado'] = user_data[0]
@@ -323,13 +318,21 @@ def _render_validacao():
 
 def _render_team_management():
     with st.form("new_u"):
-        u = st.text_input("User"); p = st.text_input("Pass", type="password"); n = st.text_input("Nome"); c = st.selectbox("Cargo", ["Advogado", "Estagiário"])
-        if st.form_submit_button("Criar"):
+        # Labels traduzidos aqui
+        u = st.text_input("Usuário") 
+        p = st.text_input("Senha", type="password")
+        n = st.text_input("Nome")
+        c = st.selectbox("Cargo", ["Advogado", "Estagiário"])
+        
+        if st.form_submit_button("CADASTRAR"):
             try:
                 db.execute_query("INSERT INTO usuarios VALUES (?,?,?,?)", (u, Utils.hash_password(p), n, c))
-                st.success("Criado")
-            except: st.error("Erro")
-    st.dataframe(db.fetch_data("SELECT nome, username FROM usuarios"), use_container_width=True)
+                st.success("Membro Cadastrado!")
+            except: st.error("Erro: Usuário já existe.")
+            
+    st.divider()
+    st.markdown("#### Membros Ativos")
+    st.dataframe(db.fetch_data("SELECT nome, username, funcao FROM usuarios"), use_container_width=True)
 
 def _render_staff_tasks():
     user = st.session_state['usuario_logado']
